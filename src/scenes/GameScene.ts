@@ -91,6 +91,10 @@ export default class GameScene extends Phaser.Scene {
       this.cameras.main.shake(150, 0.008);
     });
     this.player.on('respawn', () => this.worldManager.reset('past'));
+    this.player.on('landed', (fallSpeed: number) => {
+      // Only the heavy landings shake — keep feedback in service of clarity.
+      if (fallSpeed > 520) this.cameras.main.shake(90, 0.0028);
+    });
     this.registry.events.on('changedata-world', this.onWorldData, this);
 
     // --- HUD overlay ----------------------------------------------------
@@ -106,10 +110,10 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  override update(): void {
+  override update(_time: number, delta: number): void {
     if (this.levelComplete) return;
 
-    this.player.update();
+    this.player.update(delta);
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKey)) {
       this.worldManager.switch();

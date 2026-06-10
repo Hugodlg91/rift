@@ -70,6 +70,23 @@ export const PLAYER_HEIGHT = 28;
 /** Delay before respawning after a death. */
 export const RESPAWN_DELAY_MS = 800;
 
+/**
+ * Game-feel tuning (Phase A). All the "juice" knobs in one place so the moment-
+ * to-moment handling can be tweaked without hunting through Player.ts.
+ */
+export const FEEL = {
+  COYOTE_MS: 100, // jump still allowed this long after leaving a ledge
+  JUMP_BUFFER_MS: 120, // a jump press is remembered this long before landing
+  JUMP_CUT_MULT: 0.4, // releasing jump mid-rise keeps only this much upward vel
+  ACCEL: 1200, // horizontal acceleration toward target speed (px/s²)
+  FRICTION_GROUND: 1600, // horizontal deceleration when no input (px/s²)
+  AIR_CONTROL: 0.55, // accel & friction are scaled by this while airborne
+  APEX_GRAVITY_MULT: 0.6, // lighter gravity near the top of a jump (float)
+  APEX_THRESHOLD: 60, // |vy| under which the apex float kicks in
+  FAST_FALL_MULT: 1.3, // heavier gravity while descending (snappier fall)
+  CORNER_CORRECTION_PX: 4, // nudge to slip past a ceiling corner when rising
+} as const;
+
 // ---------------------------------------------------------------------------
 //  Level grid cell tokens
 // ---------------------------------------------------------------------------
@@ -91,6 +108,7 @@ export const TEX = {
   PLAYER: 'player',
   EXIT_PAST: 'exit_past',
   EXIT_FUTURE: 'exit_future',
+  DUST: 'dust',
 } as const;
 
 // ---------------------------------------------------------------------------

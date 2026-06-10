@@ -4,7 +4,33 @@
 > Mis à jour au fur et à mesure que les tâches sont terminées.
 
 **Session démarrée :** 2026-06-08
-**Statut global :** 🟢 MVP implémenté — typecheck + build OK
+**Statut global :** 🟢 MVP + v2 Phase A (game feel) implémentés — typecheck + build OK
+
+---
+
+## 🚀 v2 — Phase A : Game feel (terminée, en attente de review)
+
+> Réf. [DEVLOG_NEXT.md](DEVLOG_NEXT.md) §4, §3.2-3.3, §10. **Aucun nouveau contenu** — uniquement le ressenti de `Player.ts`.
+
+- [x] **Objet `FEEL`** exposé dans `constants.ts` (tous les réglages de juice centralisés)
+- [x] **Accélération / friction** — plus de vitesse instantanée ; contrôle aérien réduit (`AIR_CONTROL`)
+- [x] **Coyote time** (100 ms) — saut toléré après avoir quitté le rebord
+- [x] **Jump buffering** (120 ms) — appui mémorisé juste avant l'atterrissage
+- [x] **Variable jump height** — relâcher coupe l'ascension à 40 %
+- [x] **Apex hang** (×0.6) + **fast fall** (×1.3) — gravité modulée par frame
+- [x] **Corner correction** (±4 px) — glisse sur le coin d'un plafond en montant
+- [x] **Squash & stretch procédural** — ressort qui revient à 1 (saut/apex/atterrissage), sans conflit de tweens
+- [x] **Poussière** — course (~200 ms), demi-tour (skid), atterrissage (burst ∝ vitesse de chute) + texture `dust` générée au boot
+- [x] **Shake mesuré à l'atterrissage** — seulement sur les grosses chutes (modèle Celeste)
+- [x] `tsc --noEmit` ✓ · `npm run build` ✓
+
+**Détail technique :** `Player.update(delta)` reçoit maintenant le delta depuis `GameScene` ;
+gravité ajustée via `body.setGravityY(offset)` ; nudge de corner correction via `overlapRect` +
+`body.position` ; squash géré en spring (`Phaser.Math.Linear`) plutôt qu'en tweens pour éviter
+les conflits avec l'animation de mort.
+
+> ⏳ **À valider en review / navigateur** : ressenti des sauts, lisibilité des effets, non-régression
+> de la mécanique de switch et du cycle mort/respawn.
 
 ---
 

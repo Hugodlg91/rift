@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import {
+  FEEL,
+  GRAVITY_Y,
   JUMP_VELOCITY,
   MAX_AIR_JUMPS,
   PLAYER_HEIGHT,
@@ -9,18 +11,22 @@ import {
   TEX,
 } from '../constants';
 
-/** Total jumps allowed: one from the ground + the configured air jumps. */
-const MAX_JUMPS = 1 + MAX_AIR_JUMPS;
+/** Move `current` toward `target` by at most `maxDelta`. */
+function approach(current: number, target: number, maxDelta: number): number {
+  if (current < target) return Math.min(current + maxDelta, target);
+  if (current > target) return Math.max(current - maxDelta, target);
+  return current;
+}
 
 /**
- * The player character. Handles horizontal movement, (double) jumping and the
- * death / respawn cycle. Because textures are generated procedurally we fake
- * "animation" with flipping and tweens rather than spritesheet frames.
+ * The player character with a full game-feel layer (Phase A):
+ *  - acceleration / friction (no instant velocity), reduced air control
+ *  - coyote time, jump buffering, variable jump height
+ *  - apex hang + fast fall (per-frame gravity modulation)
+ *  - corner correction when a jump clips a ceiling edge
+ *  - procedural squash & stretch (spring back to 1) and run/turn/landing dust
  *
- * Emits:
- *  - `died`     — the instant the player dies (before the respawn delay).
- *  - `respawn`  — just before the player is repositioned (lets the scene reset
- *                 the world so the spawn tile is on solid ground again).
+ * All tuning lives in `FEEL` (constants.ts). Emits `died`, `respawn`, `landed`.
  */
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -30,7 +36,24 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     d: Phaser.Input.Keyboard.Key;
   };
 
-  private jumpsUsed = 0;
+  // Jump state (ms timers + counters).
+  private coyoteMs = 0;
+  private bufferMs = 0;
+  private airJumps = MAX_AIR_JUMPS;
+  private jumpCutArmed = false;
+  private jumpHeldPrev = false;
+
+  // Per-frame motion bookkeeping.
+  private wasOnGround = true;
+  private lastVelY = 0;
+  private lastDir = 0;
+  private runDustMs = 0;
+
+  // Procedural squash & stretch (visual scale, springs back to 1).
+  private squashX = 1;
+  private squashY = 1;
+
+  private dust!: Phaser.GameObjects.Particles.ParticleEmitter;
 
   isAlive = true;
   readonly spawnX: number;
@@ -43,15 +66,13 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
-
     this.setOrigin(0.5, 0.5);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setSize(PLAYER_WIDTH, PLAYER_HEIGHT);
-    // Collide with the world edges, but the GameScene disables the *bottom*
-    // edge so falling out the bottom is a death rather than a wall.
+    // Collide with world edges; the GameScene leaves the bottom open (fall = death).
     body.setCollideWorldBounds(true);
-    body.setMaxVelocity(PLAYER_SPEED * 2, 1200);
+    body.setMaxVelocity(PLAYER_SPEED * 3, 1400);
 
     const keyboard = scene.input.keyboard!;
     this.cursors = keyboard.createCursorKeys();
@@ -60,48 +81,165 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       a: Phaser.Input.Keyboard.KeyCodes.A,
       d: Phaser.Input.Keyboard.KeyCodes.D,
     }) as Player['keys'];
+
+    this.dust = scene.add
+      .particles(0, 0, TEX.DUST, {
+        lifespan: 360,
+        speed: { min: 18, max: 70 },
+        scale: { start: 0.7, end: 0 },
+        alpha: { start: 0.55, end: 0 },
+        gravityY: 220,
+        tint: 0xc8c0b0,
+        emitting: false,
+      })
+      .setDepth(9);
   }
 
-  override update(): void {
+  override update(delta: number): void {
     if (!this.isAlive) return;
 
     const body = this.body as Phaser.Physics.Arcade.Body;
-    const onFloor = body.blocked.down || body.touching.down;
-    if (onFloor) this.jumpsUsed = 0;
+    const dt = delta / 1000;
+    const onGround = body.blocked.down || body.touching.down;
 
-    // --- Horizontal movement -------------------------------------------
+    // --- Timers --------------------------------------------------------
+    this.coyoteMs = onGround ? FEEL.COYOTE_MS : this.coyoteMs - delta;
+    this.bufferMs -= delta;
+    if (onGround) this.airJumps = MAX_AIR_JUMPS;
+
+    // --- Input ---------------------------------------------------------
     const left = this.cursors.left.isDown || this.keys.a.isDown;
     const right = this.cursors.right.isDown || this.keys.d.isDown;
+    const inputX = (right ? 1 : 0) - (left ? 1 : 0);
 
-    if (left && !right) {
-      body.setVelocityX(-PLAYER_SPEED);
-      this.setFlipX(true);
-    } else if (right && !left) {
-      body.setVelocityX(PLAYER_SPEED);
-      this.setFlipX(false);
-    } else {
-      body.setVelocityX(0);
-    }
-
-    // --- Jump -----------------------------------------------------------
+    const jumpHeld =
+      this.cursors.up.isDown || this.cursors.space.isDown || this.keys.w.isDown;
     const jumpPressed =
       Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
       Phaser.Input.Keyboard.JustDown(this.cursors.space) ||
       Phaser.Input.Keyboard.JustDown(this.keys.w);
+    if (jumpPressed) this.bufferMs = FEEL.JUMP_BUFFER_MS;
 
-    if (jumpPressed && this.jumpsUsed < MAX_JUMPS) {
-      body.setVelocityY(JUMP_VELOCITY);
-      this.jumpsUsed++;
-      // Quick squash-and-stretch on take-off.
-      this.scene.tweens.add({
-        targets: this,
-        scaleY: 1.18,
-        scaleX: 0.86,
-        duration: 110,
-        yoyo: true,
-        ease: 'Quad.easeOut',
-      });
+    // --- Horizontal: accelerate / brake --------------------------------
+    const control = onGround ? 1 : FEEL.AIR_CONTROL;
+    let vx = body.velocity.x;
+    if (inputX !== 0) {
+      vx = approach(vx, inputX * PLAYER_SPEED, FEEL.ACCEL * control * dt);
+      this.setFlipX(inputX < 0);
+    } else {
+      vx = approach(vx, 0, FEEL.FRICTION_GROUND * control * dt);
     }
+    body.setVelocityX(vx);
+
+    // --- Jump (coyote/ground jump, then air jump) ----------------------
+    // Two independent resources so coyote can never grant a bonus jump: the
+    // ground jump is gated by `coyoteMs`, the air jump(s) by `airJumps`. A
+    // coyote jump consumes the GROUND jump (coyoteMs → 0), NOT an air jump —
+    // so coyote + double jump = 2 jumps max, never 3.
+    if (this.bufferMs > 0) {
+      if (this.coyoteMs > 0) {
+        this.performJump(body);
+        this.coyoteMs = 0; // consume the ground jump
+        this.bufferMs = 0;
+      } else if (this.airJumps > 0) {
+        this.performJump(body);
+        this.airJumps -= 1; // consume one air jump
+        this.bufferMs = 0;
+      }
+    }
+
+    // --- Variable jump height (release cuts the rise) ------------------
+    if (this.jumpCutArmed && this.jumpHeldPrev && !jumpHeld && body.velocity.y < 0) {
+      body.setVelocityY(body.velocity.y * FEEL.JUMP_CUT_MULT);
+      this.jumpCutArmed = false;
+    }
+    if (body.velocity.y >= 0) this.jumpCutArmed = false;
+    this.jumpHeldPrev = jumpHeld;
+
+    // --- Variable gravity: apex hang + fast fall ----------------------
+    // body.gravity.y is ADDED to the world gravity, so neutralise the previous
+    // frame's offset before re-applying this one. (setGravityY is an absolute
+    // set, so nothing accumulates anyway — the explicit 0 makes that intent
+    // bullet-proof.) Effective gravity = world × mult.
+    body.setGravityY(0);
+    if (!onGround) {
+      const vy = body.velocity.y;
+      if (vy > 10) {
+        body.setGravityY(GRAVITY_Y * (FEEL.FAST_FALL_MULT - 1)); // fast fall → ×1.3 effective
+      } else if (Math.abs(vy) < FEEL.APEX_THRESHOLD) {
+        body.setGravityY(GRAVITY_Y * (FEEL.APEX_GRAVITY_MULT - 1)); // apex hang → ×0.6 effective
+      }
+    }
+
+    // --- Corner correction (slip past a ceiling corner while rising) ---
+    // Trigger only when we WERE rising (Arcade already zeroed velocity.y this
+    // frame on the head-bonk, hence we test last frame's vy) AND actually hit a
+    // ceiling. A side wall sets blocked.left/right (not .up), so simply hugging
+    // a wall never triggers this. We shift only toward a side whose FULL body
+    // box is empty, so the nudge can never push the player into a solid.
+    if (this.lastVelY < -10 && body.blocked.up) {
+      const px = FEEL.CORNER_CORRECTION_PX;
+      const freeAt = (dx: number): boolean =>
+        this.scene.physics.overlapRect(body.x + dx, body.y, body.width, body.height, false, true)
+          .length === 0;
+      if (freeAt(-px)) this.nudgeX(-px, body);
+      else if (freeAt(px)) this.nudgeX(px, body);
+    }
+
+    // --- Landing -------------------------------------------------------
+    if (!this.wasOnGround && onGround) this.onLand(this.lastVelY);
+
+    // --- Run / turn dust ----------------------------------------------
+    const running = onGround && inputX !== 0 && Math.abs(vx) > 30;
+    if (running) {
+      this.runDustMs -= delta;
+      if (this.runDustMs <= 0) {
+        this.runDustMs = 200;
+        this.dust.emitParticleAt(this.x, body.bottom, 1);
+      }
+    }
+    if (onGround && inputX !== 0 && this.lastDir !== 0 && inputX !== this.lastDir) {
+      this.dust.emitParticleAt(this.x, body.bottom, 3); // skid puff on turn-around
+    }
+    if (inputX !== 0) this.lastDir = inputX;
+
+    // --- Procedural squash & stretch + run tilt -----------------------
+    // Frame-independent spring back to neutral via exact exponential decay
+    // (1 - e^(-k·dt)); the recovery speed is identical at any frame rate.
+    const rate = 1 - Math.exp(-dt * 16);
+    this.squashX = Phaser.Math.Linear(this.squashX, 1, rate);
+    this.squashY = Phaser.Math.Linear(this.squashY, 1, rate);
+    this.setScale(this.squashX, this.squashY);
+    const targetAngle = running ? (this.flipX ? -5 : 5) : 0;
+    this.setAngle(Phaser.Math.Linear(this.angle, targetAngle, rate));
+
+    // --- Bookkeeping for next frame -----------------------------------
+    this.wasOnGround = onGround;
+    this.lastVelY = body.velocity.y;
+  }
+
+  private performJump(body: Phaser.Physics.Arcade.Body): void {
+    body.setVelocityY(JUMP_VELOCITY);
+    this.jumpCutArmed = true;
+    // Stretch up on take-off.
+    this.squashX = 0.8;
+    this.squashY = 1.28;
+  }
+
+  private onLand(fallSpeed: number): void {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    const intensity = Phaser.Math.Clamp(fallSpeed / 700, 0.25, 1);
+    // Squash wide on impact, scaled by how fast we fell.
+    this.squashX = 1 + 0.3 * intensity;
+    this.squashY = 1 - 0.32 * intensity;
+    this.dust.emitParticleAt(this.x, body.bottom, Math.round(Phaser.Math.Linear(2, 9, intensity)));
+    this.emit('landed', fallSpeed);
+  }
+
+  private nudgeX(dx: number, body: Phaser.Physics.Arcade.Body): void {
+    this.x += dx;
+    body.position.x += dx;
+    body.setVelocityY(this.lastVelY); // keep the upward momentum through the corner
   }
 
   /** Kill the player: freeze physics, play a death flourish, then respawn. */
@@ -112,6 +250,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(0, 0);
     body.setAcceleration(0, 0);
+    body.setGravityY(0);
     body.enable = false;
 
     this.setTint(0xff4444);
@@ -130,7 +269,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.time.delayedCall(RESPAWN_DELAY_MS, () => this.respawn());
   }
 
-  /** Reposition at the spawn and restore control. */
+  /** Reposition at the spawn and restore control + all feel state. */
   private respawn(): void {
     // Let the scene reset the world first so the spawn tile is solid again.
     this.emit('respawn');
@@ -142,9 +281,20 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.enable = true;
+    body.setGravityY(0);
     body.reset(this.spawnX, this.spawnY);
 
-    this.jumpsUsed = 0;
+    this.coyoteMs = 0;
+    this.bufferMs = 0;
+    this.airJumps = MAX_AIR_JUMPS;
+    this.jumpCutArmed = false;
+    this.jumpHeldPrev = false;
+    this.wasOnGround = true;
+    this.lastVelY = 0;
+    this.lastDir = 0;
+    this.runDustMs = 0;
+    this.squashX = 1;
+    this.squashY = 1;
     this.isAlive = true;
 
     this.setAlpha(0);

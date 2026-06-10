@@ -16,8 +16,18 @@ export default class BootScene extends Phaser.Scene {
     this.createPlayerTexture();
     this.createExitTexture(TEX.EXIT_PAST, WORLDS.PAST.flashColor, WORLDS.PAST.accentColor);
     this.createExitTexture(TEX.EXIT_FUTURE, WORLDS.FUTURE.flashColor, WORLDS.FUTURE.accentColor);
+    this.createDustTexture();
 
     this.scene.start(SCENE.MENU);
+  }
+
+  /** Small soft dot, tinted at emit time, used for dust/landing particles. */
+  private createDustTexture(): void {
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(3, 3, 3);
+    g.generateTexture(TEX.DUST, 6, 6);
+    g.destroy();
   }
 
   /** Warm, cracked stone block for the PAST world. */
