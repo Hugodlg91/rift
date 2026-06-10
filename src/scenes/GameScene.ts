@@ -67,6 +67,9 @@ export default class GameScene extends Phaser.Scene {
     this.parallax = new ParallaxBackground(this);
 
     // --- Tile layers ----------------------------------------------------
+    // Seed the RNG per level so tile variants are identical on every (re)load
+    // and respawn of this level — stable look, no reshuffle.
+    Phaser.Math.RND.sow([`rift-level-${this.levelIndex}`]);
     this.pastGroup = this.physics.add.staticGroup();
     this.futureGroup = this.physics.add.staticGroup();
     this.buildSolids(level.past, this.pastGroup, 'past');

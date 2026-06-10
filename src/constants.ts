@@ -163,6 +163,8 @@ export const tileKey = (world: WorldId, variant: number): string => `tile_${worl
 export const tileEdgeKey = (world: WorldId): string => `tile_${world}_edge`;
 /** Texture key for a parallax layer (0 = far … 2 = near) of a world. */
 export const parallaxKey = (world: WorldId, layer: number): string => `px_${world}_${layer}`;
+/** Player texture with a baked-in accent rim (used as the Canvas fallback for the postFX glow). */
+export const playerAccentKey = (world: WorldId): string => `player_${world}`;
 
 // ---------------------------------------------------------------------------
 //  Scene keys

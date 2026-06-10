@@ -6,6 +6,7 @@ import {
   parallaxKey,
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
+  playerAccentKey,
   SCENE,
   TEX,
   TILE_SIZE,
@@ -31,7 +32,9 @@ export default class BootScene extends Phaser.Scene {
   create(): void {
     this.buildTiles();
     this.buildParallax();
-    this.createPlayerTexture();
+    this.createPlayerTexture(TEX.PLAYER); // neutral (WebGL: rim comes from postFX glow)
+    this.createPlayerTexture(playerAccentKey('past'), PALETTE.past.accent);
+    this.createPlayerTexture(playerAccentKey('future'), PALETTE.future.accent);
     this.createExitTexture(TEX.EXIT_PAST, PALETTE.past.glow, PALETTE.past.accent);
     this.createExitTexture(TEX.EXIT_FUTURE, PALETTE.future.glow, PALETTE.future.accent);
     this.createDustTexture();
@@ -187,7 +190,7 @@ export default class BootScene extends Phaser.Scene {
 
   // -- Player / exit / dust -------------------------------------------------
 
-  private createPlayerTexture(): void {
+  private createPlayerTexture(key: string, rim?: number): void {
     const g = this.make.graphics({ x: 0, y: 0 }, false);
     const w = PLAYER_WIDTH;
     const h = PLAYER_HEIGHT;
@@ -198,8 +201,13 @@ export default class BootScene extends Phaser.Scene {
     g.fillRoundedRect(3, 6, w - 6, 7, 2);
     g.lineStyle(2, 0x16161d, 1);
     g.strokeRoundedRect(1, 1, w - 2, h - 2, 6);
+    if (rim !== undefined) {
+      // Thin accent liseré at the very edge (Canvas fallback for the glow).
+      g.lineStyle(1.5, rim, 1);
+      g.strokeRoundedRect(0.75, 0.75, w - 1.5, h - 1.5, 6);
+    }
 
-    g.generateTexture(TEX.PLAYER, w, h);
+    g.generateTexture(key, w, h);
     g.destroy();
   }
 

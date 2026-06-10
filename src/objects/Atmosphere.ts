@@ -23,8 +23,9 @@ export default class Atmosphere {
         scale: { min: 0.15, max: 0.4 },
         alpha: { start: 0.35, end: 0 },
         tint: PALETTE.past.glow,
-        frequency: 220,
+        frequency: 300,
         quantity: 1,
+        maxParticles: 34, // hard ceiling for low-end devices
         emitting: false,
       })
       .setDepth(2)
@@ -41,8 +42,9 @@ export default class Atmosphere {
         alpha: { start: 0.5, end: 0 },
         tint: PALETTE.future.glow,
         blendMode: 'ADD',
-        frequency: 240,
+        frequency: 320,
         quantity: 1,
+        maxParticles: 30, // hard ceiling for low-end devices
         emitting: false,
       })
       .setDepth(2)

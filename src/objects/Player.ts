@@ -7,6 +7,7 @@ import {
   MAX_AIR_JUMPS,
   PALETTE,
   PLAYER_HEIGHT,
+  playerAccentKey,
   PLAYER_SPEED,
   PLAYER_WIDTH,
   RESPAWN_DELAY_MS,
@@ -100,12 +101,19 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       })
       .setDepth(9);
 
-    this.accentGlow = this.postFX.addGlow(PALETTE.past.accent, 3, 0, false, 0.2, 10);
+    // World-accent rim: postFX glow on WebGL, a baked-rim texture on Canvas
+    // (postFX is WebGL-only). Either way the player always shows the world.
+    if (scene.game.renderer.type === Phaser.WEBGL) {
+      this.accentGlow = this.postFX.addGlow(PALETTE.past.accent, 3, 0, false, 0.2, 10);
+    } else {
+      this.setTexture(playerAccentKey('past'));
+    }
   }
 
-  /** Tint the rim glow with the given world's accent colour. */
+  /** Reflect the current world's accent on the player (glow on WebGL, rim texture on Canvas). */
   setAccent(world: WorldId): void {
     if (this.accentGlow) this.accentGlow.color = getPalette(world).accent;
+    else this.setTexture(playerAccentKey(world));
   }
 
   override update(delta: number): void {
