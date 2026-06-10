@@ -2,14 +2,20 @@ import Phaser from 'phaser';
 import {
   CELL,
   GAME_HEIGHT,
+  getPalette,
+  PALETTE,
   SCENE,
   SWITCH_KEY,
   TEX,
   TILE_SIZE,
+  TILE_VARIANTS,
+  tileEdgeKey,
+  tileKey,
   TOTAL_LEVELS,
-  WORLDS,
 } from '../constants';
 import { LEVELS, validateLevel } from '../levels';
+import Atmosphere from '../objects/Atmosphere';
+import ParallaxBackground from '../objects/ParallaxBackground';
 import Player from '../objects/Player';
 import WorldManager from '../objects/WorldManager';
 import type { LevelCell, WorldId } from '../types';
@@ -29,7 +35,10 @@ export default class GameScene extends Phaser.Scene {
   private pastGroup!: Phaser.Physics.Arcade.StaticGroup;
   private futureGroup!: Phaser.Physics.Arcade.StaticGroup;
   private exitSprite!: Phaser.GameObjects.Sprite;
+  private exitGlow!: Phaser.GameObjects.Image;
   private switchKey!: Phaser.Input.Keyboard.Key;
+  private parallax!: ParallaxBackground;
+  private atmosphere!: Atmosphere;
 
   constructor() {
     super(SCENE.GAME);
@@ -52,13 +61,16 @@ export default class GameScene extends Phaser.Scene {
     // Walls on left/right/top, but the bottom is open so a fall = death.
     this.physics.world.setBoundsCollision(true, true, true, false);
     this.cameras.main.setBounds(0, 0, widthPx, heightPx);
-    this.cameras.main.setBackgroundColor(WORLDS.PAST.bgColor);
+    this.cameras.main.setBackgroundColor(PALETTE.past.bgFar);
+
+    // --- Parallax background (behind everything) ------------------------
+    this.parallax = new ParallaxBackground(this);
 
     // --- Tile layers ----------------------------------------------------
     this.pastGroup = this.physics.add.staticGroup();
     this.futureGroup = this.physics.add.staticGroup();
-    this.buildSolids(level.past, this.pastGroup, TEX.TILE_PAST);
-    this.buildSolids(level.future, this.futureGroup, TEX.TILE_FUTURE);
+    this.buildSolids(level.past, this.pastGroup, 'past');
+    this.buildSolids(level.future, this.futureGroup, 'future');
 
     const spawn = this.findTileCenter(level.past, CELL.SPAWN) ?? { x: TILE_SIZE, y: TILE_SIZE };
     const exit = this.findTileCenter(level.past, CELL.EXIT) ?? { x: widthPx - TILE_SIZE, y: TILE_SIZE };
@@ -68,11 +80,19 @@ export default class GameScene extends Phaser.Scene {
     this.player.setDepth(10);
     this.worldManager = new WorldManager(this, this.player, this.pastGroup, this.futureGroup);
 
-    // --- Exit portal ----------------------------------------------------
+    // --- Atmosphere (light wash, vignette, ambient particles) ----------
+    this.atmosphere = new Atmosphere(this);
+
+    // --- Exit portal (additive glow halo + pulsing portal) -------------
+    this.exitGlow = this.add
+      .image(exit.x, exit.y, TEX.GLOW)
+      .setDepth(3)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(PALETTE.past.glow);
     this.exitSprite = this.add.sprite(exit.x, exit.y, TEX.EXIT_PAST).setDepth(4);
     this.physics.add.existing(this.exitSprite, true);
     this.tweens.add({
-      targets: this.exitSprite,
+      targets: [this.exitSprite, this.exitGlow],
       scale: { from: 0.8, to: 1.15 },
       alpha: { from: 0.7, to: 1 },
       duration: 720,
@@ -131,13 +151,19 @@ export default class GameScene extends Phaser.Scene {
   private buildSolids(
     grid: LevelCell[][],
     group: Phaser.Physics.Arcade.StaticGroup,
-    texture: string,
+    world: WorldId,
   ): void {
     for (let y = 0; y < grid.length; y++) {
       const row = grid[y];
       for (let x = 0; x < row.length; x++) {
         if (row[x] === CELL.SOLID) {
-          group.create(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, texture);
+          // A tile with nothing solid above it is a lit "edge"; others get a
+          // random interior variant so runs of tiles don't visibly repeat.
+          const exposedTop = y === 0 || grid[y - 1][x] !== CELL.SOLID;
+          const key = exposedTop
+            ? tileEdgeKey(world)
+            : tileKey(world, Phaser.Math.RND.between(0, TILE_VARIANTS - 1));
+          group.create(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, key);
         }
       }
     }
@@ -156,6 +182,10 @@ export default class GameScene extends Phaser.Scene {
 
   private onWorldData(_parent: unknown, world: WorldId): void {
     this.exitSprite.setTexture(world === 'past' ? TEX.EXIT_PAST : TEX.EXIT_FUTURE);
+    this.exitGlow.setTint(getPalette(world).glow);
+    this.parallax.setWorld(world);
+    this.atmosphere.setWorld(world);
+    this.player.setAccent(world);
   }
 
   private onReachExit(): void {

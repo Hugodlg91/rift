@@ -1,15 +1,18 @@
 import Phaser from 'phaser';
 import {
   FEEL,
+  getPalette,
   GRAVITY_Y,
   JUMP_VELOCITY,
   MAX_AIR_JUMPS,
+  PALETTE,
   PLAYER_HEIGHT,
   PLAYER_SPEED,
   PLAYER_WIDTH,
   RESPAWN_DELAY_MS,
   TEX,
 } from '../constants';
+import type { WorldId } from '../types';
 
 /** Move `current` toward `target` by at most `maxDelta`. */
 function approach(current: number, target: number, maxDelta: number): number {
@@ -54,6 +57,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   private squashY = 1;
 
   private dust!: Phaser.GameObjects.Particles.ParticleEmitter;
+  // Rim glow tinted with the current world's accent — a constant reminder of
+  // which timeline you're in (WebGL only; a no-op under the Canvas renderer).
+  private accentGlow?: Phaser.FX.Glow;
 
   isAlive = true;
   readonly spawnX: number;
@@ -93,6 +99,13 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         emitting: false,
       })
       .setDepth(9);
+
+    this.accentGlow = this.postFX.addGlow(PALETTE.past.accent, 3, 0, false, 0.2, 10);
+  }
+
+  /** Tint the rim glow with the given world's accent colour. */
+  setAccent(world: WorldId): void {
+    if (this.accentGlow) this.accentGlow.color = getPalette(world).accent;
   }
 
   override update(delta: number): void {

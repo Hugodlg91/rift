@@ -4,7 +4,7 @@
 > Mis à jour au fur et à mesure que les tâches sont terminées.
 
 **Session démarrée :** 2026-06-08
-**Statut global :** 🟢 MVP + v2 Phase A (game feel) implémentés — typecheck + build OK
+**Statut global :** 🟢 MVP + v2 Phases A (game feel) & B (direction artistique) — typecheck + build OK
 
 ---
 
@@ -31,6 +31,31 @@ les conflits avec l'animation de mort.
 
 > ⏳ **À valider en review / navigateur** : ressenti des sauts, lisibilité des effets, non-régression
 > de la mécanique de switch et du cycle mort/respawn.
+
+---
+
+## 🎨 v2 — Phase B : Direction artistique (terminée, en attente de review)
+
+> Réf. [DEVLOG_NEXT.md](DEVLOG_NEXT.md) §1-2. Voir [STYLE.md](STYLE.md).
+
+- [x] **`PALETTE`** — rampes 4 tons par monde + hue-shifting ; `WORLDS` en dérive (source de vérité couleur unique)
+- [x] **Tiles 3 tons + variantes** — biseau lumière/ombre, 3 variantes aléatoires/monde (fissures PASSÉ, circuits FUTUR), tiles de **bord** (liseré d'accent) vs **intérieures** (choix auto selon le tile au-dessus)
+- [x] **Parallax 3 couches/monde** (`ParallaxBackground.ts`) — silhouettes procédurales (ruines/skyline), scrollFactor 0.1/0.3/0.6, **cross-fade au switch**
+- [x] **Vignette** — texture canvas radiale, overlay plein écran
+- [x] **Glow sorties** — halo additif (`BlendMode.ADD`) teinté par monde, pulsé
+- [x] **Particules d'ambiance** (`Atmosphere.ts`) — cendres qui tombent (PASSÉ) / data-motes qui montent (FUTUR, additif)
+- [x] **Light wash** — calque `BlendMode.OVERLAY` plein écran, teinté par monde
+- [x] **Liseré d'accent joueur** — rim glow `postFX` qui prend la couleur du monde courant
+- [x] **`STYLE.md`** — guide de style (§1.4)
+- [x] `tsc --noEmit` ✓ · `npm run build` ✓
+
+**Détail technique :** nouveaux modules `objects/ParallaxBackground.ts` et `objects/Atmosphere.ts` ;
+textures générées en plus au boot (8 tiles, 6 parallax, vignette, glow) ; `GameScene.onWorldData`
+orchestre le cross-fade (parallax + wash + ambiance + accent joueur + teinte du glow de sortie).
+Le rim glow joueur utilise `postFX` (WebGL ; no-op gracieux en Canvas).
+
+> ⏳ **À valider en navigateur** : rendu WebGL (glow/FX), lisibilité avec vignette + wash, perf des
+> particules, cohérence du cross-fade parallax avec le flash de switch existant.
 
 ---
 

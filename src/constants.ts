@@ -11,25 +11,68 @@ export const GAME_HEIGHT = 448;
 export const GRAVITY_Y = 600;
 
 // ---------------------------------------------------------------------------
-//  Worlds
+//  Palette (Phase B) — 4-tone ramps per world with hue-shifting
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-world colour ramps. Shadows shift cool, highlights shift warm. The
+ * `accent` is reserved for things the player interacts with (exit, glow); decor
+ * stays desaturated. This is the single source of truth for world colour.
+ */
+export const PALETTE = {
+  past: {
+    // RUINES — warm, desaturated, melancholic
+    bgFar: 0x0d0805,
+    bgMid: 0x1a1008,
+    bgNear: 0x2a1c0e,
+    tileShadow: 0x4a3318,
+    tileBase: 0x6b4f2a,
+    tileMid: 0x8b6914,
+    tileHighlight: 0xd4a017,
+    accent: 0xe8b43a,
+    hazard: 0xc73e1d,
+    glow: 0xffd27a,
+  },
+  future: {
+    // CYBER — cool, neon, clinical
+    bgFar: 0x01040d,
+    bgMid: 0x020818,
+    bgNear: 0x06112b,
+    tileShadow: 0x06304f,
+    tileBase: 0x0a4a7a,
+    tileMid: 0x0d6ba8,
+    tileHighlight: 0x1a9fd4,
+    accent: 0x00f5ff,
+    hazard: 0xff2d6e,
+    glow: 0x7af5ff,
+  },
+} as const;
+
+/** Lookup a world's colour ramp by id. */
+export function getPalette(id: WorldId): (typeof PALETTE)[WorldId] {
+  return id === 'past' ? PALETTE.past : PALETTE.future;
+}
+
+// ---------------------------------------------------------------------------
+//  Worlds (identity + the handful of colours other systems still reference)
 // ---------------------------------------------------------------------------
 
 export const WORLDS = {
   PAST: {
     id: 'past',
     label: '🏚️ PASSÉ',
-    bgColor: 0x1a1008, // brun très sombre
-    platformColor: 0x8b6914, // ocre/marron
-    accentColor: 0xd4a017, // doré chaud
-    flashColor: 0xffd700,
+    bgColor: PALETTE.past.bgMid,
+    platformColor: PALETTE.past.tileMid,
+    accentColor: PALETTE.past.accent,
+    flashColor: PALETTE.past.glow,
   },
   FUTURE: {
     id: 'future',
     label: '⚡ FUTUR',
-    bgColor: 0x020818, // bleu nuit profond
-    platformColor: 0x0a4a7a, // bleu acier
-    accentColor: 0x00f5ff, // cyan néon
-    flashColor: 0x00f5ff,
+    bgColor: PALETTE.future.bgMid,
+    platformColor: PALETTE.future.tileMid,
+    accentColor: PALETTE.future.accent,
+    flashColor: PALETTE.future.glow,
   },
 } as const satisfies Record<string, WorldDef>;
 
@@ -103,13 +146,23 @@ export const CELL = {
 // ---------------------------------------------------------------------------
 
 export const TEX = {
-  TILE_PAST: 'tile_past',
-  TILE_FUTURE: 'tile_future',
   PLAYER: 'player',
   EXIT_PAST: 'exit_past',
   EXIT_FUTURE: 'exit_future',
   DUST: 'dust',
+  VIGNETTE: 'vignette',
+  GLOW: 'glow',
 } as const;
+
+/** Number of random interior tile variants generated per world. */
+export const TILE_VARIANTS = 3;
+
+/** Texture key for an interior tile variant of a world. */
+export const tileKey = (world: WorldId, variant: number): string => `tile_${world}_${variant}`;
+/** Texture key for a world's top-edge tile (lit accent rim). */
+export const tileEdgeKey = (world: WorldId): string => `tile_${world}_edge`;
+/** Texture key for a parallax layer (0 = far … 2 = near) of a world. */
+export const parallaxKey = (world: WorldId, layer: number): string => `px_${world}_${layer}`;
 
 // ---------------------------------------------------------------------------
 //  Scene keys
