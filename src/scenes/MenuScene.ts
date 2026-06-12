@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getSfx } from '../audio/Sfx';
 import { GAME_HEIGHT, GAME_WIDTH, SCENE, toCSS, WORLDS } from '../constants';
 
 /**
@@ -105,6 +106,11 @@ export default class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.input.keyboard!.once('keydown-ENTER', () => this.startGame());
+
+    // Web Audio starts suspended — resume on the first user gesture. M = mute.
+    const sfx = getSfx();
+    this.input.keyboard!.once('keydown', () => sfx.resume());
+    this.input.keyboard!.on('keydown-M', () => sfx.toggleMute());
 
     this.cameras.main.fadeIn(400);
   }

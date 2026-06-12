@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getSfx } from '../audio/Sfx';
 import { GAME_HEIGHT, GAME_WIDTH, SCENE, toCSS, WORLDS } from '../constants';
 
 /** Victory / end screen, shown after the final level. Press ENTER to replay. */
@@ -71,6 +72,8 @@ export default class EndScene extends Phaser.Scene {
         this.scene.start(SCENE.MENU);
       });
     });
+
+    this.input.keyboard!.on('keydown-M', () => getSfx().toggleMute());
 
     this.cameras.main.fadeIn(500);
   }

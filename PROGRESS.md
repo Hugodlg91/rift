@@ -4,7 +4,7 @@
 > Mis à jour au fur et à mesure que les tâches sont terminées.
 
 **Session démarrée :** 2026-06-08
-**Statut global :** 🟢 MVP + v2 Phases A (game feel) & B (direction artistique) — typecheck + build OK
+**Statut global :** 🟢 MVP + v2 Phases A (game feel), B (direction artistique) & C (audio) — typecheck + build OK
 
 ---
 
@@ -56,6 +56,26 @@ Le rim glow joueur utilise `postFX` (WebGL ; no-op gracieux en Canvas).
 
 > ⏳ **À valider en navigateur** : rendu WebGL (glow/FX), lisibilité avec vignette + wash, perf des
 > particules, cohérence du cross-fade parallax avec le flash de switch existant.
+
+---
+
+## 🔊 v2 — Phase C : Audio procédural (terminée, en attente de review)
+
+> Réf. [DEVLOG_NEXT.md](DEVLOG_NEXT.md) §8. Synthèse Web Audio, **zéro fichier**.
+
+- [x] **`audio/Sfx.ts`** — AudioContext + **GainNode master** + helpers de synthèse (oscillateurs/bruit + enveloppes + filtres). SFX §8.1 : saut, double saut, atterrissage, switch monde (2 tons selon sens + glitch), switch refusé (buzz dissonant), mort, sortie **(câblés)** ; dash, collectible, checkpoint **(exposés, non câblés)**.
+- [x] **`audio/Ambience.ts`** — drone par monde (stack d'oscillateurs basse fréquence + LFO lent + filtre), **morph au switch** : PASSÉ triangle chaud/feutré (lowpass 420 Hz), FUTUR saw froid/métallique (filtre résonant 780 Hz).
+- [x] **Mute touche `M`** (master gain → 0, en mémoire de session, **pas de localStorage**).
+- [x] **Resume sur 1er input** (politique navigateur) : `keydown` du menu réveille l'AudioContext.
+- [x] **Câblage** sur évènements existants : `jump`/`doubleJump`, `land`, `rift-switch`/`rift-denied`, `death`, `exit`. Drone démarré/arrêté avec la GameScene, morph via `changedata-world`.
+- [x] `tsc --noEmit` ✓ · `npm run build` ✓
+
+**Détail technique :** `Sfx` est un singleton (un seul AudioContext), `Ambience` route via le master de `Sfx`
+(donc le mute couvre tout). Nouveaux évènements `rift-switch`/`rift-denied` émis par `WorldManager`
+(distincts de `changedata-world` qui fire aussi au respawn → pas de son de switch au respawn).
+Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectible/checkpoint (fonctions prêtes, à câbler en Phase E/F).
+
+> ⏳ **À valider en navigateur** : équilibre des volumes, ressenti des SFX, drone pas fatigant, resume OK au 1er input, mute M.
 
 ---
 

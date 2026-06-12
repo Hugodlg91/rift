@@ -162,10 +162,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.performJump(body);
         this.coyoteMs = 0; // consume the ground jump
         this.bufferMs = 0;
+        this.emit('jump', false);
       } else if (this.airJumps > 0) {
         this.performJump(body);
         this.airJumps -= 1; // consume one air jump
         this.bufferMs = 0;
+        this.emit('jump', true);
       }
     }
 

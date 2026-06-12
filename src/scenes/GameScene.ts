@@ -13,6 +13,8 @@ import {
   tileKey,
   TOTAL_LEVELS,
 } from '../constants';
+import Ambience from '../audio/Ambience';
+import { getSfx } from '../audio/Sfx';
 import { LEVELS, validateLevel } from '../levels';
 import Atmosphere from '../objects/Atmosphere';
 import ParallaxBackground from '../objects/ParallaxBackground';
@@ -39,6 +41,7 @@ export default class GameScene extends Phaser.Scene {
   private switchKey!: Phaser.Input.Keyboard.Key;
   private parallax!: ParallaxBackground;
   private atmosphere!: Atmosphere;
+  private ambience!: Ambience;
 
   constructor() {
     super(SCENE.GAME);
@@ -86,6 +89,12 @@ export default class GameScene extends Phaser.Scene {
     // --- Atmosphere (light wash, vignette, ambient particles) ----------
     this.atmosphere = new Atmosphere(this);
 
+    // --- Audio (shared SFX bus + per-world ambient drone) --------------
+    const sfx = getSfx();
+    sfx.resume();
+    this.ambience = new Ambience(sfx.context, sfx.master);
+    this.ambience.start(this.worldManager.world);
+
     // --- Exit portal (additive glow halo + pulsing portal) -------------
     this.exitGlow = this.add
       .image(exit.x, exit.y, TEX.GLOW)
@@ -112,12 +121,18 @@ export default class GameScene extends Phaser.Scene {
     this.player.on('died', () => {
       this.registry.inc('deaths', 1);
       this.cameras.main.shake(150, 0.008);
+      sfx.death();
     });
     this.player.on('respawn', () => this.worldManager.reset('past'));
     this.player.on('landed', (fallSpeed: number) => {
       // Only the heavy landings shake — keep feedback in service of clarity.
       if (fallSpeed > 520) this.cameras.main.shake(90, 0.0028);
+      sfx.land();
     });
+    this.player.on('jump', (air: boolean) => (air ? sfx.doubleJump() : sfx.jump()));
+    this.events.on('rift-switch', (world: WorldId) => sfx.switchWorld(world === 'future'));
+    this.events.on('rift-denied', () => sfx.switchDenied());
+    this.input.keyboard!.on('keydown-M', () => sfx.toggleMute());
     this.registry.events.on('changedata-world', this.onWorldData, this);
 
     // --- HUD overlay ----------------------------------------------------
@@ -130,6 +145,9 @@ export default class GameScene extends Phaser.Scene {
     // The registry emitter is global, so detach our listener on shutdown.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.registry.events.off('changedata-world', this.onWorldData, this);
+      this.events.off('rift-switch');
+      this.events.off('rift-denied');
+      this.ambience.stop();
     });
   }
 
@@ -189,11 +207,13 @@ export default class GameScene extends Phaser.Scene {
     this.parallax.setWorld(world);
     this.atmosphere.setWorld(world);
     this.player.setAccent(world);
+    this.ambience.setWorld(world);
   }
 
   private onReachExit(): void {
     if (this.levelComplete || !this.player.isAlive) return;
     this.levelComplete = true;
+    getSfx().exit();
 
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(0, 0);

@@ -52,6 +52,7 @@ export default class WorldManager {
     if (!this.isSwitchSafe(targetGroup)) {
       this.playDeniedEffect();
       this.startCooldown(SWITCH_COOLDOWN_MS / 2);
+      this.scene.events.emit('rift-denied');
       return;
     }
 
@@ -62,6 +63,9 @@ export default class WorldManager {
     this.applyWorldState();
     this.playTransitionEffect(from, to);
     this.startCooldown(SWITCH_COOLDOWN_MS);
+    // Distinct from the registry world-change (which also fires on respawn),
+    // so SFX only play on a real player-initiated switch.
+    this.scene.events.emit('rift-switch', this.currentWorld);
   }
 
   /** Force a world instantly (used on respawn so the spawn tile is solid). */
