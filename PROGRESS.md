@@ -75,7 +75,8 @@ Le rim glow joueur utilise `postFX` (WebGL ; no-op gracieux en Canvas).
 (distincts de `changedata-world` qui fire aussi au respawn → pas de son de switch au respawn).
 Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectible/checkpoint (fonctions prêtes, à câbler en Phase E/F).
 
-> ⏳ **À valider en navigateur** : équilibre des volumes, ressenti des SFX, drone pas fatigant, resume OK au 1er input, mute M.
+- [x] **Vérifié en navigateur** (instrumentation Web Audio) : AudioContext `running` (master 0.35 → compressor → destination), drone = 5 oscillateurs au lancement, `jump` = 1 SFX, switch = 3 oscillateurs (2 tons + glitch), mute `M` = master → 0 → 0.35, aucun son au repos.
+- [x] **Fix glitch trouvé en vérif** : le SFX `land` se redéclenchait ~40×/atterrissage (micro-rebond au sol → `onGround` flickere → bord de landing re-déclenché). Corrigé par un seuil de temps de vol (`FEEL.LAND_MIN_AIR_MS`) ⇒ **un contact = un seul atterrissage** (corrige aussi poussière/squash).
 
 ---
 

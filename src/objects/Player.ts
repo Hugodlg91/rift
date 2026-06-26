@@ -49,6 +49,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   // Per-frame motion bookkeeping.
   private wasOnGround = true;
+  private airborneMs = 0; // time since leaving the ground (gates real landings vs. micro-bounces)
   private lastVelY = 0;
   private lastDir = 0;
   private runDustMs = 0;
@@ -210,7 +211,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // --- Landing -------------------------------------------------------
-    if (!this.wasOnGround && onGround) this.onLand(this.lastVelY);
+    // Gate on airtime: when a body settles onto a tile Arcade can eject it for a
+    // single frame, flickering `onGround` and re-triggering this edge every frame.
+    // Requiring real airtime makes one touchdown fire exactly one land.
+    if (!this.wasOnGround && onGround && this.airborneMs >= FEEL.LAND_MIN_AIR_MS) {
+      this.onLand(this.lastVelY);
+    }
 
     // --- Run / turn dust ----------------------------------------------
     const running = onGround && inputX !== 0 && Math.abs(vx) > 30;
@@ -238,6 +244,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     // --- Bookkeeping for next frame -----------------------------------
     this.wasOnGround = onGround;
+    this.airborneMs = onGround ? 0 : this.airborneMs + delta;
     this.lastVelY = body.velocity.y;
   }
 
@@ -313,6 +320,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.jumpCutArmed = false;
     this.jumpHeldPrev = false;
     this.wasOnGround = true;
+    this.airborneMs = 0;
     this.lastVelY = 0;
     this.lastDir = 0;
     this.runDustMs = 0;

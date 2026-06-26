@@ -128,6 +128,7 @@ export const FEEL = {
   APEX_THRESHOLD: 60, // |vy| under which the apex float kicks in
   FAST_FALL_MULT: 1.3, // heavier gravity while descending (snappier fall)
   CORNER_CORRECTION_PX: 4, // nudge to slip past a ceiling corner when rising
+  LAND_MIN_AIR_MS: 90, // a "landing" only counts after this much airtime — stops post-touchdown micro-bounces from re-firing dust/squash/SFX
 } as const;
 
 // ---------------------------------------------------------------------------
