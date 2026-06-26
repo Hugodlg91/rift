@@ -12,8 +12,8 @@ interface DroneCfg {
 const DRONE: Record<WorldId, DroneCfg> = {
   // PAST — warm, muffled (low triangle stack, gentle lowpass).
   past: { freqs: [55, 82.41, 110], type: 'triangle', cutoff: 420, q: 1, lfoRate: 0.07, lfoDepth: 120 },
-  // FUTURE — cold, metallic (saw stack, brighter resonant filter, faster LFO).
-  future: { freqs: [49, 98, 146.83], type: 'sawtooth', cutoff: 780, q: 5, lfoRate: 0.16, lfoDepth: 260 },
+  // FUTURE — cold, metallic (saw stack, brighter filter with moderate Q, faster LFO).
+  future: { freqs: [49, 98, 146.83], type: 'sawtooth', cutoff: 780, q: 3, lfoRate: 0.16, lfoDepth: 260 },
 };
 
 /**
@@ -25,11 +25,13 @@ export default class Ambience {
   private readonly ctx: AudioContext;
   private readonly out: GainNode;
   private readonly filter: BiquadFilterNode;
-  private readonly level = 0.09;
+  private readonly level = 0.06; // sits low in the mix
 
   private oscillators: OscillatorNode[] = [];
   private lfo?: OscillatorNode;
   private lfoGain?: GainNode;
+  private ampLfo?: OscillatorNode;
+  private ampLfoGain?: GainNode;
   private started = false;
   private world: WorldId = 'past';
 
@@ -70,6 +72,15 @@ export default class Ambience {
     this.lfoGain.connect(this.filter.frequency);
     this.lfo.start(t);
 
+    // Slow amplitude LFO so the drone breathes.
+    this.ampLfo = this.ctx.createOscillator();
+    this.ampLfo.frequency.value = 0.08;
+    this.ampLfoGain = this.ctx.createGain();
+    this.ampLfoGain.gain.value = 0.015;
+    this.ampLfo.connect(this.ampLfoGain);
+    this.ampLfoGain.connect(this.out.gain);
+    this.ampLfo.start(t);
+
     this.out.gain.setValueAtTime(0.0001, t);
     this.out.gain.exponentialRampToValueAtTime(this.level, t + 0.8);
   }
@@ -98,7 +109,9 @@ export default class Ambience {
     this.out.gain.cancelScheduledValues(t);
     this.out.gain.setValueAtTime(Math.max(0.0001, this.out.gain.value), t);
     this.out.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    this.ampLfoGain?.gain.linearRampToValueAtTime(0, t + 0.3); // fade the breathing out cleanly
     this.oscillators.forEach((o) => o.stop(t + 0.33));
     this.lfo?.stop(t + 0.33);
+    this.ampLfo?.stop(t + 0.33);
   }
 }

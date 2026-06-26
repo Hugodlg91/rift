@@ -31,14 +31,38 @@ interface NoiseOpts {
 export default class Sfx {
   private readonly ctx: AudioContext;
   private readonly masterGain: GainNode;
-  private readonly level = 0.5;
+  private readonly compressor: DynamicsCompressorNode;
+  private readonly level = 0.35;
+  // Mute lives on the singleton (this whole module is one instance), so it
+  // persists across scene changes — never stored in a scene.
   private muted = false;
 
   constructor() {
     this.ctx = new AudioContext();
+
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = this.level;
-    this.masterGain.connect(this.ctx.destination);
+
+    // Soft limiter before the destination — catches peaks when SFX stack.
+    this.compressor = this.ctx.createDynamicsCompressor();
+    this.compressor.threshold.value = -10;
+    this.compressor.knee.value = 20;
+    this.compressor.ratio.value = 12;
+    this.compressor.attack.value = 0.003;
+    this.compressor.release.value = 0.2;
+
+    this.masterGain.connect(this.compressor);
+    this.compressor.connect(this.ctx.destination);
+
+    // Unlock on the first user gesture anywhere (mouse OR key), so audio also
+    // resumes on a dev refresh straight into the game, not just from the menu.
+    const unlock = (): void => {
+      this.resume();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
   }
 
   /** Shared context + master bus, so Ambience can route through the same mute. */
@@ -76,7 +100,7 @@ export default class Sfx {
   }
 
   land(): void {
-    this.noise({ duration: 0.12, gain: 0.28, filterType: 'lowpass', freq: 700, freqEnd: 120 });
+    this.noise({ duration: 0.12, gain: 0.15, filterType: 'lowpass', freq: 700, freqEnd: 120 });
   }
 
   /** Two tones (warm→cold to the FUTURE, cold→warm to the PAST) + a glitch. */
@@ -88,18 +112,18 @@ export default class Sfx {
       this.blip({ type: 'sine', freq: 680, duration: 0.1, gain: 0.18 });
       this.blip({ type: 'sine', freq: 300, duration: 0.16, gain: 0.18, delay: 0.07 });
     }
-    this.blip({ type: 'square', freq: toFuture ? 1200 : 200, duration: 0.04, gain: 0.07, delay: 0.04 });
+    this.blip({ type: 'square', freq: toFuture ? 1200 : 200, duration: 0.04, gain: 0.05, delay: 0.04 });
   }
 
   /** Dissonant low buzz (two beating squares) when a switch is refused. */
   switchDenied(): void {
-    this.blip({ type: 'square', freq: 130, freqEnd: 90, duration: 0.18, gain: 0.18 });
-    this.blip({ type: 'square', freq: 138, freqEnd: 96, duration: 0.18, gain: 0.13 });
+    this.blip({ type: 'square', freq: 130, freqEnd: 90, duration: 0.18, gain: 0.12 });
+    this.blip({ type: 'square', freq: 138, freqEnd: 96, duration: 0.18, gain: 0.09 });
   }
 
   death(): void {
-    this.blip({ type: 'sawtooth', freq: 420, freqEnd: 60, duration: 0.5, gain: 0.22 });
-    this.noise({ duration: 0.3, gain: 0.18, filterType: 'lowpass', freq: 900, freqEnd: 200, delay: 0.02 });
+    this.blip({ type: 'sawtooth', freq: 420, freqEnd: 60, duration: 0.5, gain: 0.18 });
+    this.noise({ duration: 0.3, gain: 0.11, filterType: 'lowpass', freq: 900, freqEnd: 200, delay: 0.02 });
   }
 
   exit(): void {
@@ -111,7 +135,7 @@ export default class Sfx {
   // --- exposed now, wired when the mechanics land (Phase E/F) --------------
 
   dash(): void {
-    this.noise({ duration: 0.22, gain: 0.22, filterType: 'bandpass', freq: 400, freqEnd: 1900, q: 1.2 });
+    this.noise({ duration: 0.22, gain: 0.15, filterType: 'bandpass', freq: 400, freqEnd: 1900, q: 1.2 });
   }
 
   collectible(): void {
