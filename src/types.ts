@@ -32,6 +32,21 @@ export interface LevelData {
   future: LevelCell[][];
 }
 
+/** Player capabilities, gated per level (Phase E). */
+export type Ability = 'switch' | 'doubleJump' | 'dash' | 'wallJump' | 'echo';
+
+/** A level plus its metadata: which abilities are active, which is newly taught. */
+export interface LevelMeta {
+  id: number;
+  name: string;
+  chapter: number;
+  /** Capabilities usable on this level. */
+  abilities: Ability[];
+  /** Capability newly unlocked here → triggers the contextual tutorial. */
+  introduces?: Ability;
+  data: LevelData;
+}
+
 /** A position expressed in world (pixel) coordinates. */
 export interface Point {
   x: number;

@@ -41,6 +41,9 @@ export default class BootScene extends Phaser.Scene {
     this.createExitTexture(TEX.EXIT_FUTURE, PALETTE.future.glow, PALETTE.future.accent);
     this.createDustTexture();
     this.createCheckpointTexture();
+    this.createHazardTextures();
+    this.createOneWayTexture();
+    this.createMovingTexture();
     this.makeVignette();
     this.makeGlow();
 
@@ -256,6 +259,60 @@ export default class BootScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.9);
     g.fillRoundedRect(w / 2 - 9, h - 8, 18, 6, 2); // base
     g.generateTexture(TEX.CHECKPOINT, w, h);
+    g.destroy();
+  }
+
+  /** Hazards: PAST stone spikes, FUTURE laser bar. Death on contact. */
+  private createHazardTextures(): void {
+    const s = TILE_SIZE;
+    // PAST — a row of spikes pointing up.
+    const past = this.make.graphics({ x: 0, y: 0 }, false);
+    const n = 4;
+    const sw = s / n;
+    past.fillStyle(PALETTE.past.tileShadow, 1);
+    for (let i = 0; i < n; i++) past.fillTriangle(i * sw, s, i * sw + sw / 2, s * 0.28, i * sw + sw, s);
+    past.fillStyle(PALETTE.past.hazard, 1);
+    for (let i = 0; i < n; i++) past.fillTriangle(i * sw + sw * 0.3, s, i * sw + sw / 2, s * 0.34, i * sw + sw * 0.7, s);
+    past.generateTexture(TEX.HAZARD_PAST, s, s);
+    past.destroy();
+    // FUTURE — a glowing laser beam with emitter nodes.
+    const fut = this.make.graphics({ x: 0, y: 0 }, false);
+    fut.fillStyle(PALETTE.future.hazard, 0.22);
+    fut.fillRect(0, s * 0.36, s, s * 0.28);
+    fut.fillStyle(PALETTE.future.hazard, 1);
+    fut.fillRect(0, s * 0.47, s, 4);
+    fut.fillStyle(0xffffff, 0.9);
+    fut.fillRect(0, s * 0.49, s, 1.5);
+    fut.fillStyle(PALETTE.future.glow, 1);
+    fut.fillCircle(2, s * 0.5, 3);
+    fut.fillCircle(s - 2, s * 0.5, 3);
+    fut.generateTexture(TEX.HAZARD_FUTURE, s, s);
+    fut.destroy();
+  }
+
+  /** One-way platform: a thin slab (white → tinted per world at runtime). */
+  private createOneWayTexture(): void {
+    const s = TILE_SIZE;
+    const h = 10;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0xffffff, 0.85);
+    g.fillRect(0, 2, s, h - 2);
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(0, 0, s, 2.5); // bright top lip you land on
+    g.generateTexture(TEX.ONEWAY, s, h);
+    g.destroy();
+  }
+
+  /** Moving platform: a rounded slab (white → tinted per world at runtime). */
+  private createMovingTexture(): void {
+    const w = TILE_SIZE;
+    const h = 16;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0xffffff, 0.88);
+    g.fillRoundedRect(0, 0, w, h, 3);
+    g.fillStyle(0x000000, 0.25);
+    g.fillRect(2, h - 4, w - 4, 2);
+    g.generateTexture(TEX.MOVING, w, h);
     g.destroy();
   }
 

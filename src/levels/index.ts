@@ -1,10 +1,19 @@
-import type { LevelData, LevelCell } from '../types';
+import type { LevelData, LevelCell, LevelMeta } from '../types';
 import { level1 } from './level1';
 import { level2 } from './level2';
 import { level3 } from './level3';
 
-/** All MVP levels, in play order. */
-export const LEVELS: readonly LevelData[] = [level1, level2, level3];
+/**
+ * All levels in play order, each with its active abilities. NOTE: with only the
+ * three chapter-1 levels so far, dash/wallJump are granted on levels 2-3 so the
+ * systems (gating + tutorials) are demonstrable; the final chapter/ability
+ * layout lands with the 12-level content (Phase G).
+ */
+export const LEVELS: readonly LevelMeta[] = [
+  { id: 1, name: 'Premier Rift', chapter: 1, abilities: ['switch', 'doubleJump'], data: level1 },
+  { id: 2, name: 'Le Gouffre', chapter: 1, abilities: ['switch', 'doubleJump', 'dash'], introduces: 'dash', data: level2 },
+  { id: 3, name: 'Le Gantelet', chapter: 1, abilities: ['switch', 'doubleJump', 'dash', 'wallJump'], introduces: 'wallJump', data: level3 },
+];
 
 function findToken(grid: LevelCell[][], token: string): { x: number; y: number } | null {
   for (let y = 0; y < grid.length; y++) {
@@ -60,5 +69,5 @@ export function validateLevel(level: LevelData, name: string): void {
 
 /** Validate every level; call once at boot in development. */
 export function validateAllLevels(): void {
-  LEVELS.forEach((lvl, i) => validateLevel(lvl, `level${i + 1}`));
+  LEVELS.forEach((lvl, i) => validateLevel(lvl.data, `level${i + 1}`));
 }

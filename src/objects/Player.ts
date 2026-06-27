@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import {
+  DASH,
   FEEL,
   getPalette,
   GRAVITY_Y,
@@ -12,8 +13,9 @@ import {
   PLAYER_WIDTH,
   RESPAWN_DELAY_MS,
   TEX,
+  WALL,
 } from '../constants';
-import type { WorldId } from '../types';
+import type { Ability, WorldId } from '../types';
 
 /** Move `current` toward `target` by at most `maxDelta`. */
 function approach(current: number, target: number, maxDelta: number): number {
@@ -39,6 +41,20 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     a: Phaser.Input.Keyboard.Key;
     d: Phaser.Input.Keyboard.Key;
   };
+
+  // Abilities enabled on the current level (Phase E). Gates jumps/dash/walls.
+  private abilities = new Set<Ability>();
+  private currentWorld: WorldId = 'past'; // tracked for after-image tint
+
+  // Dash (Phase E).
+  private dashMs = 0; // > 0 while dashing
+  private dashAvailable = true; // refreshed on the ground
+  private dashDir = 1;
+  private afterImageMs = 0;
+
+  // Wall slide / wall jump (Phase E).
+  private wallDir = 0; // -1 wall on left, 1 wall on right, 0 none
+  private wallJumpLockMs = 0; // brief horizontal-input lockout after a wall jump
 
   // Jump state (ms timers + counters).
   private coyoteMs = 0;
@@ -81,7 +97,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     body.setSize(PLAYER_WIDTH, PLAYER_HEIGHT);
     // Collide with world edges; the GameScene leaves the bottom open (fall = death).
     body.setCollideWorldBounds(true);
-    body.setMaxVelocity(PLAYER_SPEED * 3, 1400);
+    body.setMaxVelocity(DASH.SPEED, 1400); // headroom for the dash burst
 
     const keyboard = scene.input.keyboard!;
     this.cursors = keyboard.createCursorKeys();
@@ -114,14 +130,25 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   /** Reflect the current world's accent on the player (glow on WebGL, rim texture on Canvas). */
   setAccent(world: WorldId): void {
+    this.currentWorld = world;
     if (this.accentGlow) this.accentGlow.color = getPalette(world).accent;
     else this.setTexture(playerAccentKey(world));
+  }
+
+  /** True during a dash → hazards treat the player as invulnerable (i-frames). */
+  get dashing(): boolean {
+    return this.dashMs > 0;
   }
 
   /** Move the respawn point (e.g. to an activated checkpoint). */
   setCheckpoint(x: number, y: number): void {
     this.spawnX = x;
     this.spawnY = y;
+  }
+
+  /** Set the capabilities usable on the current level. */
+  setAbilities(abilities: Ability[]): void {
+    this.abilities = new Set(abilities);
   }
 
   override update(delta: number): void {
@@ -131,15 +158,43 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     const dt = delta / 1000;
     const onGround = body.blocked.down || body.touching.down;
 
+    // --- Dash (overrides normal movement while active) -----------------
+    if (this.dashMs > 0) {
+      this.updateDash(delta, body, onGround);
+      return;
+    }
+    if (onGround) this.dashAvailable = true;
+
+    // --- Wall contact (for slide / wall jump) --------------------------
+    this.wallDir =
+      !onGround && this.abilities.has('wallJump')
+        ? body.blocked.right
+          ? 1
+          : body.blocked.left
+            ? -1
+            : 0
+        : 0;
+    if (this.wallJumpLockMs > 0) this.wallJumpLockMs -= delta;
+
     // --- Timers --------------------------------------------------------
     this.coyoteMs = onGround ? FEEL.COYOTE_MS : this.coyoteMs - delta;
     this.bufferMs -= delta;
-    if (onGround) this.airJumps = MAX_AIR_JUMPS;
+    if (onGround) this.airJumps = this.abilities.has('doubleJump') ? MAX_AIR_JUMPS : 0;
 
     // --- Input ---------------------------------------------------------
     const left = this.cursors.left.isDown || this.keys.a.isDown;
     const right = this.cursors.right.isDown || this.keys.d.isDown;
     const inputX = (right ? 1 : 0) - (left ? 1 : 0);
+
+    // --- Dash start ----------------------------------------------------
+    if (
+      this.abilities.has('dash') &&
+      this.dashAvailable &&
+      Phaser.Input.Keyboard.JustDown(this.cursors.shift)
+    ) {
+      this.startDash(body, inputX);
+      return;
+    }
 
     const jumpHeld =
       this.cursors.up.isDown || this.cursors.space.isDown || this.keys.w.isDown;
@@ -152,7 +207,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     // --- Horizontal: accelerate / brake --------------------------------
     const control = onGround ? 1 : FEEL.AIR_CONTROL;
     let vx = body.velocity.x;
-    if (inputX !== 0) {
+    if (this.wallJumpLockMs > 0) {
+      // Hold the wall-jump push; horizontal input is ignored briefly.
+    } else if (inputX !== 0) {
       vx = approach(vx, inputX * PLAYER_SPEED, FEEL.ACCEL * control * dt);
       this.setFlipX(inputX < 0);
     } else {
@@ -171,6 +228,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.coyoteMs = 0; // consume the ground jump
         this.bufferMs = 0;
         this.emit('jump', false);
+      } else if (this.wallDir !== 0) {
+        // Wall jump takes priority over the air jump (and never consumes it).
+        this.performWallJump(body);
+        this.bufferMs = 0;
+        this.emit('jump', true);
       } else if (this.airJumps > 0) {
         this.performJump(body);
         this.airJumps -= 1; // consume one air jump
@@ -199,6 +261,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         body.setGravityY(GRAVITY_Y * (FEEL.FAST_FALL_MULT - 1)); // fast fall → ×1.3 effective
       } else if (Math.abs(vy) < FEEL.APEX_THRESHOLD) {
         body.setGravityY(GRAVITY_Y * (FEEL.APEX_GRAVITY_MULT - 1)); // apex hang → ×0.6 effective
+      }
+    }
+
+    // --- Wall slide: cap the fall while pressing into a wall ----------
+    if (this.wallDir !== 0 && inputX === this.wallDir && body.velocity.y > 0) {
+      body.setGravityY(0);
+      if (body.velocity.y > WALL.SLIDE_SPEED) body.setVelocityY(WALL.SLIDE_SPEED);
+      this.runDustMs -= delta;
+      if (this.runDustMs <= 0) {
+        this.runDustMs = 90;
+        this.dust.emitParticleAt(this.x + this.wallDir * 8, body.center.y, 1);
       }
     }
 
@@ -263,6 +336,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.squashY = 1.28;
   }
 
+  private performWallJump(body: Phaser.Physics.Arcade.Body): void {
+    body.setVelocity(-this.wallDir * WALL.JUMP_VX, WALL.JUMP_VY);
+    this.jumpCutArmed = true;
+    this.wallJumpLockMs = WALL.CONTROL_LOCK_MS; // let the push land before input resumes
+    this.setFlipX(this.wallDir > 0); // face away from the wall
+    this.squashX = 0.82;
+    this.squashY = 1.24;
+    this.dust.emitParticleAt(this.x + this.wallDir * 8, body.center.y, 4);
+    this.emit('walljump'); // distinct from 'jump' so tutorials can detect it
+  }
+
   private onLand(fallSpeed: number): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
     const intensity = Phaser.Math.Clamp(fallSpeed / 700, 0.25, 1);
@@ -271,6 +355,63 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.squashY = 1 - 0.32 * intensity;
     this.dust.emitParticleAt(this.x, body.bottom, Math.round(Phaser.Math.Linear(2, 9, intensity)));
     this.emit('landed', fallSpeed);
+  }
+
+  // --- Dash (Phase E) ------------------------------------------------------
+
+  private startDash(body: Phaser.Physics.Arcade.Body, inputX: number): void {
+    this.dashDir = inputX !== 0 ? Math.sign(inputX) : this.flipX ? -1 : 1;
+    this.dashMs = DASH.DURATION_MS;
+    this.dashAvailable = false; // refreshed on the next ground contact
+    this.afterImageMs = 0;
+    this.setFlipX(this.dashDir < 0);
+    this.squashX = 1.35; // stretch along the dash
+    this.squashY = 0.72;
+    body.setVelocity(this.dashDir * DASH.SPEED, 0);
+    this.spawnAfterImage();
+    this.emit('dash');
+  }
+
+  private updateDash(delta: number, body: Phaser.Physics.Arcade.Body, onGround: boolean): void {
+    this.dashMs -= delta;
+    body.setVelocityX(this.dashDir * DASH.SPEED);
+    body.setVelocityY(0);
+    body.setGravityY(-GRAVITY_Y); // cancel world gravity → a flat horizontal burst
+
+    this.afterImageMs -= delta;
+    if (this.afterImageMs <= 0) {
+      this.afterImageMs = DASH.AFTERIMAGE_MS;
+      this.spawnAfterImage();
+    }
+
+    const rate = 1 - Math.exp(-(delta / 1000) * 16);
+    this.squashX = Phaser.Math.Linear(this.squashX, 1, rate);
+    this.squashY = Phaser.Math.Linear(this.squashY, 1, rate);
+    this.setScale(this.squashX, this.squashY);
+
+    if (this.dashMs <= 0) body.setGravityY(0); // hand gravity back to normal update
+
+    this.wasOnGround = onGround;
+    this.airborneMs = onGround ? 0 : this.airborneMs + delta;
+    this.lastVelY = body.velocity.y;
+  }
+
+  /** Faded, accent-tinted ghost left behind during a dash. */
+  private spawnAfterImage(): void {
+    const ghost = this.scene.add
+      .image(this.x, this.y, this.texture.key)
+      .setFlipX(this.flipX)
+      .setScale(this.scaleX, this.scaleY)
+      .setDepth(this.depth - 1)
+      .setAlpha(0.55)
+      .setTint(getPalette(this.currentWorld).accent);
+    this.scene.tweens.add({
+      targets: ghost,
+      alpha: 0,
+      duration: 220,
+      ease: 'Quad.easeOut',
+      onComplete: () => ghost.destroy(),
+    });
   }
 
   private nudgeX(dx: number, body: Phaser.Physics.Arcade.Body): void {
@@ -326,6 +467,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.airJumps = MAX_AIR_JUMPS;
     this.jumpCutArmed = false;
     this.jumpHeldPrev = false;
+    this.dashMs = 0;
+    this.dashAvailable = true;
+    this.wallDir = 0;
+    this.wallJumpLockMs = 0;
     this.wasOnGround = true;
     this.airborneMs = 0;
     this.lastVelY = 0;

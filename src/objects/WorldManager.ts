@@ -13,6 +13,7 @@ import Player from './Player';
 export default class WorldManager {
   private currentWorld: WorldId = 'past';
   private cooldown = false;
+  private switchEnabled = true;
 
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
@@ -42,9 +43,14 @@ export default class WorldManager {
     return this.currentWorld;
   }
 
-  /** Toggle PAST <-> FUTURE, unless on cooldown, dead, or it would crush the player. */
+  /** Enable/disable the world switch (gated by the level's 'switch' ability). */
+  setSwitchEnabled(enabled: boolean): void {
+    this.switchEnabled = enabled;
+  }
+
+  /** Toggle PAST <-> FUTURE, unless disabled, on cooldown, dead, or it would crush the player. */
   switch(): void {
-    if (this.cooldown || !this.player.isAlive) return;
+    if (!this.switchEnabled || this.cooldown || !this.player.isAlive) return;
 
     const target = otherWorld(this.currentWorld);
     const targetGroup = target === 'past' ? this.pastGroup : this.futureGroup;

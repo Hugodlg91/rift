@@ -5,6 +5,7 @@ import type { LevelCell, LevelData } from '../types';
  * number arrays for wide multi-screen levels. One character per cell:
  *
  *   '#' solid · '.' empty · 'S' spawn · 'E' exit · 'P' checkpoint
+ *   '^' hazard · '=' one-way platform · 'M' moving platform
  *
  * Every row must be the same length; `validateLevel` enforces it against
  * `width`/`height` in dev so a miscount fails loudly at boot.
@@ -15,6 +16,9 @@ const CHAR_TO_CELL: Record<string, LevelCell> = {
   S: 'S',
   E: 'E',
   P: 'P',
+  '^': '^',
+  '=': '=',
+  M: 'M',
 };
 
 /** Turn an array of equal-length ASCII rows into a grid of {@link LevelCell}. */

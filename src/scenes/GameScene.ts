@@ -18,10 +18,18 @@ import Ambience from '../audio/Ambience';
 import { getSfx } from '../audio/Sfx';
 import { LEVELS, validateLevel } from '../levels';
 import Atmosphere from '../objects/Atmosphere';
+import MovingPlatform from '../objects/MovingPlatform';
 import ParallaxBackground from '../objects/ParallaxBackground';
 import Player from '../objects/Player';
 import WorldManager from '../objects/WorldManager';
-import type { LevelCell, WorldId } from '../types';
+import type { Ability, LevelCell, WorldId } from '../types';
+
+/** Contextual tutorial per newly-introduced ability: prompt text + the player
+ *  event that dismisses it (fired on first use). */
+const TUTORIALS: Partial<Record<Ability, { text: string; event: string }>> = {
+  dash: { text: 'NOUVELLE CAPACITÉ — DASH : [MAJ]', event: 'dash' },
+  wallJump: { text: 'NOUVELLE CAPACITÉ — SAUT MURAL : saute contre un mur', event: 'walljump' },
+};
 
 /**
  * Main gameplay scene. Builds one level (two static-tile layers), wires up the
@@ -50,6 +58,10 @@ export default class GameScene extends Phaser.Scene {
     pillar: Phaser.GameObjects.Image;
     activated: boolean;
   }[] = [];
+  // Per-world hazard / one-way / moving elements (Phase E); toggled on switch.
+  private hazards: Phaser.Physics.Arcade.Image[] = [];
+  private oneWays: Phaser.Physics.Arcade.Image[] = [];
+  private movingPlatforms: MovingPlatform[] = [];
 
   constructor() {
     super(SCENE.GAME);
@@ -60,10 +72,14 @@ export default class GameScene extends Phaser.Scene {
     this.levelComplete = false;
     this.lookaheadX = 0;
     this.checkpoints = [];
+    this.hazards = [];
+    this.oneWays = [];
+    this.movingPlatforms = [];
   }
 
   create(): void {
-    const level = LEVELS[this.levelIndex];
+    const meta = LEVELS[this.levelIndex];
+    const level = meta.data;
     if (import.meta.env.DEV) validateLevel(level, `level${this.levelIndex + 1}`);
 
     const widthPx = level.width * TILE_SIZE;
@@ -96,12 +112,33 @@ export default class GameScene extends Phaser.Scene {
     this.player.setDepth(10);
     this.worldManager = new WorldManager(this, this.player, this.pastGroup, this.futureGroup);
 
+    // --- Abilities (gated per level) -----------------------------------
+    this.player.setAbilities(meta.abilities);
+    this.worldManager.setSwitchEnabled(meta.abilities.includes('switch'));
+
     // --- Camera: follow with deadzone (lookahead added per-frame) -------
     this.cameras.main.startFollow(this.player, true, CAMERA.LERP_X, CAMERA.LERP_Y);
     this.cameras.main.setDeadzone(CAMERA.DEADZONE_W, CAMERA.DEADZONE_H);
 
     // --- Checkpoints ('P' tokens) --------------------------------------
     this.buildCheckpoints(level.past);
+
+    // --- Hazards / one-way / moving platforms (per world, Phase E) -----
+    (['past', 'future'] as const).forEach((w) => {
+      const grid = w === 'past' ? level.past : level.future;
+      this.buildHazards(grid, w);
+      this.buildOneWays(grid, w);
+      this.buildMovingPlatforms(grid, w);
+    });
+    this.physics.add.overlap(this.player, this.hazards, () => this.onHazard());
+    this.physics.add.collider(this.player, this.oneWays, undefined, (playerObj, platObj) => {
+      const pb = (playerObj as Phaser.Physics.Arcade.Sprite).body as Phaser.Physics.Arcade.Body;
+      const ob = (platObj as Phaser.Physics.Arcade.Image).body as Phaser.Physics.Arcade.StaticBody;
+      // One-way: only collide when descending onto the top (jump up through it).
+      return pb.velocity.y >= 0 && pb.bottom <= ob.top + 8;
+    });
+    this.physics.add.collider(this.player, this.movingPlatforms);
+    this.setElementsWorld(this.worldManager.world);
 
     // --- Atmosphere (light wash, vignette, ambient particles) ----------
     this.atmosphere = new Atmosphere(this);
@@ -147,10 +184,21 @@ export default class GameScene extends Phaser.Scene {
       sfx.land();
     });
     this.player.on('jump', (air: boolean) => (air ? sfx.doubleJump() : sfx.jump()));
+    this.player.on('dash', () => sfx.dash());
     this.events.on('rift-switch', (world: WorldId) => sfx.switchWorld(world === 'future'));
     this.events.on('rift-denied', () => sfx.switchDenied());
     this.input.keyboard!.on('keydown-M', () => sfx.toggleMute());
     this.registry.events.on('changedata-world', this.onWorldData, this);
+
+    // --- Contextual tutorial (a newly unlocked ability) ----------------
+    this.registry.set('tutorial', '');
+    if (meta.introduces) {
+      const tut = TUTORIALS[meta.introduces];
+      if (tut) {
+        this.registry.set('tutorial', tut.text);
+        this.player.once(tut.event, () => this.registry.set('tutorial', ''));
+      }
+    }
 
     // --- HUD overlay ----------------------------------------------------
     this.registry.set('level', this.levelIndex + 1);
@@ -197,6 +245,22 @@ export default class GameScene extends Phaser.Scene {
     const t = 1 - Math.pow(1 - CAMERA.LOOKAHEAD_LERP, delta / (1000 / 60));
     this.lookaheadX = Phaser.Math.Linear(this.lookaheadX, -dir * CAMERA.LOOKAHEAD_X, t);
     this.cameras.main.setFollowOffset(this.lookaheadX, 0);
+
+    // Moving platforms: advance the active world's, carry a player riding one.
+    const pworld = this.worldManager.world;
+    for (const mp of this.movingPlatforms) {
+      if (mp.world !== pworld) continue;
+      mp.tick(delta);
+      const mb = mp.body as Phaser.Physics.Arcade.StaticBody;
+      if (
+        body.blocked.down &&
+        Math.abs(body.bottom - mb.top) < 6 &&
+        body.right > mb.left &&
+        body.left < mb.right
+      ) {
+        body.position.x += mp.deltaX; // ride the platform horizontally
+      }
+    }
 
     this.parallax.update(this.cameras.main);
   }
@@ -277,6 +341,65 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // --- Hazards / one-way / moving platforms (Phase E) ----------------------
+
+  private buildHazards(grid: LevelCell[][], world: WorldId): void {
+    const key = world === 'past' ? TEX.HAZARD_PAST : TEX.HAZARD_FUTURE;
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[y].length; x++) {
+        if (grid[y][x] !== CELL.HAZARD) continue;
+        const img = this.physics.add
+          .staticImage(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, key)
+          .setDepth(5);
+        img.setData('world', world);
+        this.hazards.push(img);
+      }
+    }
+  }
+
+  private buildOneWays(grid: LevelCell[][], world: WorldId): void {
+    const tint = getPalette(world).tileHighlight;
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[y].length; x++) {
+        if (grid[y][x] !== CELL.ONEWAY) continue;
+        const img = this.physics.add
+          .staticImage(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + 6, TEX.ONEWAY)
+          .setTint(tint)
+          .setDepth(5);
+        img.setData('world', world);
+        this.oneWays.push(img);
+      }
+    }
+  }
+
+  private buildMovingPlatforms(grid: LevelCell[][], world: WorldId): void {
+    const tint = getPalette(world).accent;
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[y].length; x++) {
+        if (grid[y][x] !== CELL.MOVING) continue;
+        this.movingPlatforms.push(
+          new MovingPlatform(this, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, world, tint),
+        );
+      }
+    }
+  }
+
+  /** Show + enable only the elements belonging to the active world. */
+  private setElementsWorld(world: WorldId): void {
+    const toggle = (obj: Phaser.Physics.Arcade.Image | MovingPlatform, on: boolean): void => {
+      obj.setVisible(on);
+      const body = obj.body as Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody | null;
+      if (body) body.enable = on;
+    };
+    for (const hz of this.hazards) toggle(hz, hz.getData('world') === world);
+    for (const ow of this.oneWays) toggle(ow, ow.getData('world') === world);
+    for (const mp of this.movingPlatforms) toggle(mp, mp.world === world);
+  }
+
+  private onHazard(): void {
+    if (this.player.isAlive && !this.player.dashing) this.player.die();
+  }
+
   private onWorldData(_parent: unknown, world: WorldId): void {
     this.exitSprite.setTexture(world === 'past' ? TEX.EXIT_PAST : TEX.EXIT_FUTURE);
     this.exitGlow.setTint(getPalette(world).glow);
@@ -284,6 +407,7 @@ export default class GameScene extends Phaser.Scene {
     this.atmosphere.setWorld(world);
     this.player.setAccent(world);
     this.ambience.setWorld(world);
+    this.setElementsWorld(world);
   }
 
   private onReachExit(): void {

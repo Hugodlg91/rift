@@ -131,6 +131,21 @@ export const FEEL = {
   LAND_MIN_AIR_MS: 90, // a "landing" only counts after this much airtime — stops post-touchdown micro-bounces from re-firing dust/squash/SFX
 } as const;
 
+/** Dash tuning (Phase E). Shift = a short horizontal burst, refreshed on the ground. */
+export const DASH = {
+  SPEED: 560, // px/s horizontal burst
+  DURATION_MS: 150, // length of the burst (gravity cancelled during it)
+  AFTERIMAGE_MS: 26, // spawn an after-image this often while dashing
+} as const;
+
+/** Wall slide + wall jump tuning (Phase E). */
+export const WALL = {
+  SLIDE_SPEED: 95, // capped fall speed while pressing into a wall (px/s)
+  JUMP_VX: 250, // horizontal push away from the wall
+  JUMP_VY: -400, // upward impulse of a wall jump
+  CONTROL_LOCK_MS: 160, // ignore horizontal input this long after a wall jump (lets the push land)
+} as const;
+
 // ---------------------------------------------------------------------------
 //  Level grid cell tokens
 // ---------------------------------------------------------------------------
@@ -141,6 +156,9 @@ export const CELL = {
   SPAWN: 'S',
   EXIT: 'E',
   CHECKPOINT: 'P',
+  HAZARD: '^', // spikes (PAST) / laser (FUTURE) — death on contact
+  ONEWAY: '=', // platform: solid from above, pass-through from below
+  MOVING: 'M', // platform that travels back and forth
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -168,6 +186,16 @@ export const TEX = {
   VIGNETTE: 'vignette',
   GLOW: 'glow',
   CHECKPOINT: 'checkpoint',
+  HAZARD_PAST: 'hazard_past',
+  HAZARD_FUTURE: 'hazard_future',
+  ONEWAY: 'oneway', // tinted per world at runtime
+  MOVING: 'moving', // tinted per world at runtime
+} as const;
+
+/** Moving-platform tuning (Phase E). */
+export const MOVING_PLATFORM = {
+  SPEED: 55, // px/s travel speed
+  RANGE: 96, // px of travel from the start (one way)
 } as const;
 
 /** Number of random interior tile variants generated per world. */

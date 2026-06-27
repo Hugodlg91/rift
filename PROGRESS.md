@@ -4,7 +4,7 @@
 > Mis à jour au fur et à mesure que les tâches sont terminées.
 
 **Session démarrée :** 2026-06-08
-**Statut global :** 🟢 MVP + v2 Phases A (game feel), B (direction artistique), C (audio) & D (caméra & niveaux élaborés) — typecheck + build OK
+**Statut global :** 🟢 MVP + v2 Phases A (game feel), B (direction artistique), C (audio), D (caméra & niveaux élaborés) & E (capacités + hazards) — typecheck + build OK
 
 ---
 
@@ -93,6 +93,22 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 - [x] **Vérifié en navigateur** (pas-à-pas déterministe, onglet preview masqué = rAF gelé) : boot→menu→jeu sans exception ; level1 = 1472 px / level2 = 1600 px (multi-écrans) ; `scrollX` 0→443 (max 672), `followOffset` −96 ; parallax suit (loin ≈44, près ≈265) ; mur PASSÉ bloque, switch ouvre ; checkpoint activé → respawn au checkpoint (x688, pas x80) ; sortie → `InterLevelScene` → niveau 2.
 
 > ⏳ **À valider à la main** : ressenti caméra (lerp/deadzone/lookahead), lisibilité du parallax en scroll, design/jouabilité des 3 niveaux élargis.
+
+---
+
+## ⚡ v2 — Phase E : Capacités débloquées + hazards (terminée, en attente de review)
+
+> Réf. [DEVLOG_NEXT.md](DEVLOG_NEXT.md) §5.
+
+- [x] **Système de capacités** — `Ability` + `LevelMeta` (`types.ts`) ; chaque niveau déclare `abilities[]` + `introduces`. `Player.setAbilities` gate le double saut, `WorldManager.setSwitchEnabled` gate le switch. *(level1 = switch+saut ; level2 +dash ; level3 +saut mural — assignation provisoire, l'agencement final des 12 niveaux viendra en Phase G.)*
+- [x] **Dash** (`MAJ`) — burst horizontal (`DASH`), i-frames vs hazards pendant le dash, after-images teintées, cooldown réinitialisé au sol.
+- [x] **Wall slide + wall jump** (`WALL`) — chute plaquée au mur ralentie (95 px/s) + saut en rebond qui pousse à l'opposé avec lockout d'input bref.
+- [x] **Tutoriels contextuels** — overlay HUD discret (`UIScene`, registry `tutorial`) au spawn quand le niveau `introduces` une capacité, masqué à la 1ʳᵉ utilisation.
+- [x] **Hazards de base** — `^` (piques PASSÉ / laser FUTUR, mort au contact), `=` (one-way), `M` (`MovingPlatform` : va-et-vient horizontal + portage du joueur). Par monde, togglés au switch ; textures au boot.
+- [x] `tsc` ✓ · `npm run build` ✓
+- [x] **Vérifié en navigateur** (pas-à-pas) : dash gated lvl1 / actif lvl2 (burst 112 px, tuto qui se masque) ; wall slide vy=95 + wall jump vx=−250 ; piques tuent + toggle par monde (PASSÉ : 3 one-way ; FUTUR : pique+mobile) ; mobile qui avance ; 3 niveaux sans exception.
+
+> ⏳ **À valider à la main** : ressenti dash/wall jump, lisibilité des hazards, portage sur plateforme mobile + one-way à la manette (placement provisoire — design Phase G).
 
 ---
 
