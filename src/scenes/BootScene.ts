@@ -44,6 +44,9 @@ export default class BootScene extends Phaser.Scene {
     this.createHazardTextures();
     this.createOneWayTexture();
     this.createMovingTexture();
+    this.createCollapseTexture();
+    this.createButtonTexture();
+    this.createDoorTexture();
     this.makeVignette();
     this.makeGlow();
 
@@ -313,6 +316,52 @@ export default class BootScene extends Phaser.Scene {
     g.fillStyle(0x000000, 0.25);
     g.fillRect(2, h - 4, w - 4, 2);
     g.generateTexture(TEX.MOVING, w, h);
+    g.destroy();
+  }
+
+  /** Collapsing platform: a cracked slab (white → tinted per world). */
+  private createCollapseTexture(): void {
+    const w = TILE_SIZE;
+    const h = 16;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0xffffff, 0.8);
+    g.fillRect(0, 0, w, h);
+    g.lineStyle(1, 0x000000, 0.45);
+    g.beginPath();
+    g.moveTo(9, 0);
+    g.lineTo(13, h);
+    g.moveTo(21, 0);
+    g.lineTo(17, h);
+    g.strokePath();
+    g.generateTexture(TEX.COLLAPSE, w, h);
+    g.destroy();
+  }
+
+  /** Button: a low pressure plate (white → tinted per world). */
+  private createButtonTexture(): void {
+    const w = TILE_SIZE;
+    const h = 10;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0xffffff, 0.5);
+    g.fillRect(0, h - 3, w, 3); // base
+    g.fillStyle(0xffffff, 1);
+    g.fillRoundedRect(w * 0.2, 0, w * 0.6, h - 2, 2); // raised pad
+    g.generateTexture(TEX.BUTTON, w, h);
+    g.destroy();
+  }
+
+  /** Door: a 1×2-tile barrier with slats (white → tinted per world). */
+  private createDoorTexture(): void {
+    const w = TILE_SIZE;
+    const h = TILE_SIZE * 2;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0xffffff, 0.85);
+    g.fillRect(2, 0, w - 4, h);
+    g.fillStyle(0x000000, 0.3);
+    for (let y = 6; y < h; y += 10) g.fillRect(4, y, w - 8, 2); // slats
+    g.lineStyle(2, 0xffffff, 1);
+    g.strokeRect(1, 0, w - 2, h);
+    g.generateTexture(TEX.DOOR, w, h);
     g.destroy();
   }
 

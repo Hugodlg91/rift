@@ -6,6 +6,7 @@ import type { LevelCell, LevelData } from '../types';
  *
  *   '#' solid · '.' empty · 'S' spawn · 'E' exit · 'P' checkpoint
  *   '^' hazard · '=' one-way platform · 'M' moving platform
+ *   'C' collapsing platform · 'B' button · 'D' door
  *
  * Every row must be the same length; `validateLevel` enforces it against
  * `width`/`height` in dev so a miscount fails loudly at boot.
@@ -19,6 +20,9 @@ const CHAR_TO_CELL: Record<string, LevelCell> = {
   '^': '^',
   '=': '=',
   M: 'M',
+  C: 'C',
+  B: 'B',
+  D: 'D',
 };
 
 /** Turn an array of equal-length ASCII rows into a grid of {@link LevelCell}. */

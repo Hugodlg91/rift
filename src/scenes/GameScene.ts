@@ -19,6 +19,7 @@ import Ambience from '../audio/Ambience';
 import { getSfx } from '../audio/Sfx';
 import { LEVELS, validateLevel } from '../levels';
 import Atmosphere from '../objects/Atmosphere';
+import CollapsiblePlatform from '../objects/CollapsiblePlatform';
 import EchoPlatform from '../objects/EchoPlatform';
 import MovingPlatform from '../objects/MovingPlatform';
 import ParallaxBackground from '../objects/ParallaxBackground';
@@ -65,6 +66,9 @@ export default class GameScene extends Phaser.Scene {
   private hazards: Phaser.Physics.Arcade.Image[] = [];
   private oneWays: Phaser.Physics.Arcade.Image[] = [];
   private movingPlatforms: MovingPlatform[] = [];
+  private collapsibles: CollapsiblePlatform[] = [];
+  private buttons: Phaser.Physics.Arcade.Image[] = []; // data: world, pressed
+  private doors: Phaser.Physics.Arcade.Image[] = []; // data: world, open
   // Signature Echo (Phase F): at most one active at a time.
   private echo?: EchoPlatform;
   private echoCollider?: Phaser.Physics.Arcade.Collider;
@@ -81,6 +85,9 @@ export default class GameScene extends Phaser.Scene {
     this.hazards = [];
     this.oneWays = [];
     this.movingPlatforms = [];
+    this.collapsibles = [];
+    this.buttons = [];
+    this.doors = [];
     this.echo = undefined;
     this.echoCollider = undefined;
   }
@@ -137,6 +144,9 @@ export default class GameScene extends Phaser.Scene {
       this.buildHazards(grid, w);
       this.buildOneWays(grid, w);
       this.buildMovingPlatforms(grid, w);
+      this.buildCollapsibles(grid, w);
+      this.buildButtons(grid, w);
+      this.buildDoors(grid, w);
     });
     this.physics.add.overlap(this.player, this.hazards, () => this.onHazard());
     this.physics.add.collider(this.player, this.oneWays, undefined, (playerObj, platObj) => {
@@ -146,6 +156,13 @@ export default class GameScene extends Phaser.Scene {
       return pb.velocity.y >= 0 && pb.bottom <= ob.top + 8;
     });
     this.physics.add.collider(this.player, this.movingPlatforms);
+    this.physics.add.collider(this.player, this.collapsibles, (_p, c) =>
+      (c as CollapsiblePlatform).trigger(),
+    );
+    this.physics.add.collider(this.player, this.doors);
+    this.physics.add.overlap(this.player, this.buttons, (_p, b) =>
+      this.onButton(b as Phaser.Physics.Arcade.Image),
+    );
     this.setElementsWorld(this.worldManager.world);
 
     // --- Atmosphere (light wash, vignette, ambient particles) ----------
@@ -405,6 +422,12 @@ export default class GameScene extends Phaser.Scene {
     for (const hz of this.hazards) toggle(hz, hz.getData('world') === world);
     for (const ow of this.oneWays) toggle(ow, ow.getData('world') === world);
     for (const mp of this.movingPlatforms) toggle(mp, mp.world === world);
+    for (const c of this.collapsibles) c.setActiveWorld(c.world === world);
+    for (const b of this.buttons) toggle(b, b.getData('world') === world);
+    for (const d of this.doors) {
+      const active = d.getData('world') === world && !d.getData('open');
+      toggle(d, active);
+    }
   }
 
   private onHazard(): void {
@@ -431,6 +454,76 @@ export default class GameScene extends Phaser.Scene {
       this.echo.dissolve();
       this.echo = undefined;
     }
+  }
+
+  // --- Collapsing platforms / buttons / doors (Phase F2) -------------------
+
+  private buildCollapsibles(grid: LevelCell[][], world: WorldId): void {
+    const tint = getPalette(world).tileMid;
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[y].length; x++) {
+        if (grid[y][x] !== CELL.COLLAPSE) continue;
+        this.collapsibles.push(
+          new CollapsiblePlatform(this, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + 8, world, tint),
+        );
+      }
+    }
+  }
+
+  private buildButtons(grid: LevelCell[][], world: WorldId): void {
+    const tint = getPalette(world).accent;
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[y].length; x++) {
+        if (grid[y][x] !== CELL.BUTTON) continue;
+        const img = this.physics.add
+          .staticImage(x * TILE_SIZE + TILE_SIZE / 2, (y + 1) * TILE_SIZE - 5, TEX.BUTTON)
+          .setTint(tint)
+          .setDepth(5);
+        img.setData('world', world);
+        img.setData('pressed', false);
+        this.buttons.push(img);
+      }
+    }
+  }
+
+  private buildDoors(grid: LevelCell[][], world: WorldId): void {
+    const tint = getPalette(world).accent;
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[y].length; x++) {
+        if (grid[y][x] !== CELL.DOOR) continue;
+        const img = this.physics.add
+          .staticImage(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE, TEX.DOOR) // spans this cell + the one below
+          .setTint(tint)
+          .setDepth(5);
+        img.setData('world', world);
+        img.setData('open', false);
+        this.doors.push(img);
+      }
+    }
+  }
+
+  /** Latching pressure plate: opens every door in its own world. */
+  private onButton(button: Phaser.Physics.Arcade.Image): void {
+    if (button.getData('pressed')) return;
+    button.setData('pressed', true);
+    button.setScale(1, 0.55).setTint(0xffffff); // depress + light up
+    const world = button.getData('world') as WorldId;
+    for (const d of this.doors) if (d.getData('world') === world) this.openDoor(d);
+  }
+
+  private openDoor(door: Phaser.Physics.Arcade.Image): void {
+    if (door.getData('open')) return;
+    door.setData('open', true);
+    const body = door.body as Phaser.Physics.Arcade.StaticBody | null;
+    if (body) body.enable = false;
+    this.tweens.add({
+      targets: door,
+      alpha: 0,
+      scaleY: 0.1,
+      duration: 220,
+      ease: 'Quad.easeIn',
+      onComplete: () => door.setVisible(false),
+    });
   }
 
   private onWorldData(_parent: unknown, world: WorldId): void {

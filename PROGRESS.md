@@ -121,7 +121,13 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 - [x] `tsc` ✓ · `npm run build` ✓
 - [x] **Vérifié en navigateur** (pas-à-pas) : spawn au switch à hauteur des pieds, **joueur qui tient debout dessus en l'air** (foot == echoTop == 176), remplacement au switch suivant + dissolution de l'ancien, nettoyage après 2,5 s, tuto qui se masque.
 
-### F2 — Plateformes effondrables (`C`) + boutons/portes (`B`/`D`) ⬜ à venir
+### F2 — Effondrables + boutons/portes ✅ (terminée, en attente de review)
+- [x] **`CollapsiblePlatform`** (`C`) — solide jusqu'au contact, **tremble 400 ms puis tombe** (`COLLAPSE.FALL_DELAY_MS`), **réapparaît après 2 s** (`RESET_MS`). Per-monde.
+- [x] **Boutons (`B`) + portes (`D`)** — plaque de pression **à enclenchement** : ouvre **toutes les portes de son monde** (liaison globale par monde pour l'instant ; un `id` de liaison ciblée viendra en Phase G). Porte = barrière solide 1×2 tuiles qui s'efface à l'ouverture. Per-monde.
+- [x] Tokens de démo dans level2 (FUTUR) : `C` flottante, `B` sur le sol, `D` qui barre le passage (bouton avant la porte → solvable).
+- [x] `tsc` ✓ · `npm run build` ✓
+- [x] **Vérifié en navigateur** (pas-à-pas) : effondrable solid→gone(body off)→reset solid après 2 s ; porte **solide au départ** dans son monde → **bouton enclenché → porte ouverte** (body off) ; portes inactives dans l'autre monde.
+
 ### F3 — Collectibles (`o`) ⬜ à venir
 
 > ⏳ **À valider à la main** : ressenti de l'Echo (placement aux pieds vs position exacte, durée 2,5 s), usage en puzzle.

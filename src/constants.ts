@@ -159,6 +159,9 @@ export const CELL = {
   HAZARD: '^', // spikes (PAST) / laser (FUTURE) — death on contact
   ONEWAY: '=', // platform: solid from above, pass-through from below
   MOVING: 'M', // platform that travels back and forth
+  COLLAPSE: 'C', // platform that drops shortly after you step on it, then returns
+  BUTTON: 'B', // pressure plate that opens its world's doors
+  DOOR: 'D', // solid barrier; opens while its world's button is pressed
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -190,6 +193,9 @@ export const TEX = {
   HAZARD_FUTURE: 'hazard_future',
   ONEWAY: 'oneway', // tinted per world at runtime
   MOVING: 'moving', // tinted per world at runtime
+  COLLAPSE: 'collapse', // tinted per world at runtime
+  BUTTON: 'button', // tinted per world at runtime
+  DOOR: 'door', // tinted per world at runtime
 } as const;
 
 /** Moving-platform tuning (Phase E). */
@@ -201,6 +207,12 @@ export const MOVING_PLATFORM = {
 /** Echo platform tuning (Phase F) — "your past becomes your platform". */
 export const ECHO = {
   LIFETIME_MS: 2500, // how long an echo stays solid before dissolving
+} as const;
+
+/** Collapsing-platform tuning (Phase F). */
+export const COLLAPSE = {
+  FALL_DELAY_MS: 400, // time on contact before it drops
+  RESET_MS: 2000, // time gone before it returns
 } as const;
 
 /** Number of random interior tile variants generated per world. */
