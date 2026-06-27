@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import {
   CAMERA,
   CELL,
+  ECHO,
   GAME_HEIGHT,
   getPalette,
   PALETTE,
@@ -18,6 +19,7 @@ import Ambience from '../audio/Ambience';
 import { getSfx } from '../audio/Sfx';
 import { LEVELS, validateLevel } from '../levels';
 import Atmosphere from '../objects/Atmosphere';
+import EchoPlatform from '../objects/EchoPlatform';
 import MovingPlatform from '../objects/MovingPlatform';
 import ParallaxBackground from '../objects/ParallaxBackground';
 import Player from '../objects/Player';
@@ -29,6 +31,7 @@ import type { Ability, LevelCell, WorldId } from '../types';
 const TUTORIALS: Partial<Record<Ability, { text: string; event: string }>> = {
   dash: { text: 'NOUVELLE CAPACITÉ — DASH : [MAJ]', event: 'dash' },
   wallJump: { text: 'NOUVELLE CAPACITÉ — SAUT MURAL : saute contre un mur', event: 'walljump' },
+  echo: { text: 'NOUVELLE CAPACITÉ — ECHO : au switch, ta position laisse une plateforme', event: 'echo' },
 };
 
 /**
@@ -62,6 +65,9 @@ export default class GameScene extends Phaser.Scene {
   private hazards: Phaser.Physics.Arcade.Image[] = [];
   private oneWays: Phaser.Physics.Arcade.Image[] = [];
   private movingPlatforms: MovingPlatform[] = [];
+  // Signature Echo (Phase F): at most one active at a time.
+  private echo?: EchoPlatform;
+  private echoCollider?: Phaser.Physics.Arcade.Collider;
 
   constructor() {
     super(SCENE.GAME);
@@ -75,6 +81,8 @@ export default class GameScene extends Phaser.Scene {
     this.hazards = [];
     this.oneWays = [];
     this.movingPlatforms = [];
+    this.echo = undefined;
+    this.echoCollider = undefined;
   }
 
   create(): void {
@@ -185,7 +193,10 @@ export default class GameScene extends Phaser.Scene {
     });
     this.player.on('jump', (air: boolean) => (air ? sfx.doubleJump() : sfx.jump()));
     this.player.on('dash', () => sfx.dash());
-    this.events.on('rift-switch', (world: WorldId) => sfx.switchWorld(world === 'future'));
+    this.events.on('rift-switch', (world: WorldId) => {
+      sfx.switchWorld(world === 'future');
+      if (this.player.hasAbility('echo')) this.spawnEcho(world);
+    });
     this.events.on('rift-denied', () => sfx.switchDenied());
     this.input.keyboard!.on('keydown-M', () => sfx.toggleMute());
     this.registry.events.on('changedata-world', this.onWorldData, this);
@@ -400,6 +411,28 @@ export default class GameScene extends Phaser.Scene {
     if (this.player.isAlive && !this.player.dashing) this.player.die();
   }
 
+  /** Leave an echo platform at the player's feet, solid in the world just entered. */
+  private spawnEcho(world: WorldId): void {
+    this.clearEcho();
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    this.echo = new EchoPlatform(this, this.player.x, body.bottom, world, getPalette(world).accent);
+    this.echoCollider = this.physics.add.collider(this.player, this.echo);
+    this.echo.setActiveWorld(this.worldManager.world === world);
+    this.player.emit('echo'); // dismisses the echo tutorial on first use
+    this.time.delayedCall(ECHO.LIFETIME_MS, () => this.clearEcho());
+  }
+
+  private clearEcho(): void {
+    if (this.echoCollider) {
+      this.echoCollider.destroy();
+      this.echoCollider = undefined;
+    }
+    if (this.echo) {
+      this.echo.dissolve();
+      this.echo = undefined;
+    }
+  }
+
   private onWorldData(_parent: unknown, world: WorldId): void {
     this.exitSprite.setTexture(world === 'past' ? TEX.EXIT_PAST : TEX.EXIT_FUTURE);
     this.exitGlow.setTint(getPalette(world).glow);
@@ -408,6 +441,7 @@ export default class GameScene extends Phaser.Scene {
     this.player.setAccent(world);
     this.ambience.setWorld(world);
     this.setElementsWorld(world);
+    if (this.echo) this.echo.setActiveWorld(world === this.echo.world);
   }
 
   private onReachExit(): void {

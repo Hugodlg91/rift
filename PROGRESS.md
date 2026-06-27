@@ -112,6 +112,22 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 
 ---
 
+## 🪞 v2 — Phase F : Echo + éléments avancés (en cours, sous-phases F1→F3)
+
+> Réf. [DEVLOG_NEXT.md](DEVLOG_NEXT.md) §5.2 (Echo) + §5.3.
+
+### F1 — Echo ✅ (terminée, en attente de review)
+- [x] **`EchoPlatform`** — au switch (capacité `echo`), une silhouette du joueur teintée/semi-transparente reste à la position quittée, **solide dans le nouveau monde ~2,5 s** (`ECHO.LIFETIME_MS`) puis se dissout. **Max 1 active** (un nouveau switch remplace l'ancien). Câblée sur `rift-switch`, gérée par `GameScene` (collider + timer). Capacité gated par niveau (`echo` sur level3, tutoriel contextuel). Tuning dans `ECHO`.
+- [x] `tsc` ✓ · `npm run build` ✓
+- [x] **Vérifié en navigateur** (pas-à-pas) : spawn au switch à hauteur des pieds, **joueur qui tient debout dessus en l'air** (foot == echoTop == 176), remplacement au switch suivant + dissolution de l'ancien, nettoyage après 2,5 s, tuto qui se masque.
+
+### F2 — Plateformes effondrables (`C`) + boutons/portes (`B`/`D`) ⬜ à venir
+### F3 — Collectibles (`o`) ⬜ à venir
+
+> ⏳ **À valider à la main** : ressenti de l'Echo (placement aux pieds vs position exacte, durée 2,5 s), usage en puzzle.
+
+---
+
 ## ✅ Tâches accomplies
 
 - [x] **Setup config projet** — `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html`, `.gitignore`, `README.md`

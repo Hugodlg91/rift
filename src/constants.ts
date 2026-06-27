@@ -198,6 +198,11 @@ export const MOVING_PLATFORM = {
   RANGE: 96, // px of travel from the start (one way)
 } as const;
 
+/** Echo platform tuning (Phase F) — "your past becomes your platform". */
+export const ECHO = {
+  LIFETIME_MS: 2500, // how long an echo stays solid before dissolving
+} as const;
+
 /** Number of random interior tile variants generated per world. */
 export const TILE_VARIANTS = 3;
 

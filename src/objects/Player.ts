@@ -151,6 +151,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.abilities = new Set(abilities);
   }
 
+  hasAbility(ability: Ability): boolean {
+    return this.abilities.has(ability);
+  }
+
   override update(delta: number): void {
     if (!this.isAlive) return;
 

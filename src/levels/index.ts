@@ -12,7 +12,7 @@ import { level3 } from './level3';
 export const LEVELS: readonly LevelMeta[] = [
   { id: 1, name: 'Premier Rift', chapter: 1, abilities: ['switch', 'doubleJump'], data: level1 },
   { id: 2, name: 'Le Gouffre', chapter: 1, abilities: ['switch', 'doubleJump', 'dash'], introduces: 'dash', data: level2 },
-  { id: 3, name: 'Le Gantelet', chapter: 1, abilities: ['switch', 'doubleJump', 'dash', 'wallJump'], introduces: 'wallJump', data: level3 },
+  { id: 3, name: 'Le Gantelet', chapter: 1, abilities: ['switch', 'doubleJump', 'dash', 'wallJump', 'echo'], introduces: 'echo', data: level3 },
 ];
 
 function findToken(grid: LevelCell[][], token: string): { x: number; y: number } | null {
