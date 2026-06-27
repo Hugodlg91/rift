@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
 import { getSfx } from '../audio/Sfx';
 import { GAME_HEIGHT, GAME_WIDTH, SCENE, toCSS, TOTAL_LEVELS, WORLDS } from '../constants';
+import { CHAPTERS, LEVELS } from '../levels';
 
 /**
  * Between-levels interstitial: confirms the level just cleared and the run's
- * death count, then continues to the next level on ENTER/SPACE. Shown only
- * between levels — the final level goes straight to the victory screen.
+ * death count, announces the chapter when a new one begins, then continues on
+ * ENTER/SPACE. Shown only between levels — the final level goes straight to the
+ * victory screen.
  */
 export default class InterLevelScene extends Phaser.Scene {
   constructor() {
@@ -14,15 +16,17 @@ export default class InterLevelScene extends Phaser.Scene {
 
   create(data: { next?: number }): void {
     const next = data.next ?? 1; // 0-based index of the level to play next
-    const cleared = next; // the level just finished, 1-based, equals `next`
+    const cleared = LEVELS[next - 1];
+    const upcoming = LEVELS[next];
+    const newChapter = upcoming && cleared && upcoming.chapter !== cleared.chapter;
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
     this.cameras.main.setBackgroundColor(0x06070c);
 
     this.add
-      .text(w / 2, h * 0.32, `NIVEAU ${cleared} FRANCHI`, {
+      .text(w / 2, h * 0.3, `NIVEAU ${cleared?.name ?? next} FRANCHI`, {
         fontFamily: 'monospace',
-        fontSize: '40px',
+        fontSize: '38px',
         fontStyle: 'bold',
         color: toCSS(WORLDS.PAST.accentColor),
         stroke: '#000000',
@@ -30,15 +34,28 @@ export default class InterLevelScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.add
-      .text(w / 2, h * 0.5, `PROCHAIN : NIVEAU ${next + 1} / ${TOTAL_LEVELS}`, {
-        fontFamily: 'monospace',
-        fontSize: '18px',
-        color: toCSS(WORLDS.FUTURE.accentColor),
-        stroke: '#000000',
-        strokeThickness: 3,
-      })
-      .setOrigin(0.5);
+    if (newChapter) {
+      this.add
+        .text(w / 2, h * 0.47, `CHAPITRE ${upcoming.chapter} — ${CHAPTERS[upcoming.chapter]?.name ?? ''}`, {
+          fontFamily: 'monospace',
+          fontSize: '24px',
+          fontStyle: 'bold',
+          color: toCSS(WORLDS.FUTURE.accentColor),
+          stroke: '#000000',
+          strokeThickness: 5,
+        })
+        .setOrigin(0.5);
+    } else {
+      this.add
+        .text(w / 2, h * 0.47, `PROCHAIN : NIVEAU ${upcoming?.name ?? next + 1} / ${TOTAL_LEVELS}`, {
+          fontFamily: 'monospace',
+          fontSize: '18px',
+          color: toCSS(WORLDS.FUTURE.accentColor),
+          stroke: '#000000',
+          strokeThickness: 3,
+        })
+        .setOrigin(0.5);
+    }
 
     const deaths = (this.registry.get('deaths') as number) ?? 0;
     this.add

@@ -133,7 +133,25 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 - [x] `tsc` ✓ · `npm run build` ✓
 - [x] **Vérifié en navigateur** (pas-à-pas) : HUD `◆ 0/2` → ramassage PASSÉ `◆ 1/2` (body off) → switch FUTUR (shard cachée au PASSÉ, visible au FUTUR) → ramassage `◆ 2/2`.
 
-> ⏳ **À valider à la main** : ressenti de l'Echo (placement/durée), des effondrables, du couple bouton/porte ; valeur des collectibles. **Phase F complète** — reste G (12 niveaux), H (HUD v2 + polish), I (publication).
+> ⏳ **À valider à la main** : ressenti de l'Echo (placement/durée), des effondrables, du couple bouton/porte ; valeur des collectibles. **Phase F complète.**
+
+---
+
+## 🗺️ v2 — Phase G : 12 niveaux / 3 chapitres (framework posé, contenu à venir)
+
+> Réf. [DEVLOG_NEXT.md](DEVLOG_NEXT.md) §6. Approche : **framework d'abord** (cette étape), puis contenu réel **chapitre par chapitre** (niveaux from scratch).
+
+### Framework ✅ (terminé, en attente de review)
+- [x] **Structure 3 chapitres / 12 niveaux** — `CHAPTERS` (LES RUINES / LA FRACTURE / TEMPS PROFOND) + `LEVELS` (12 `LevelMeta`) dans `levels/index.ts`. `TOTAL_LEVELS = 12`.
+- [x] **Capacités cumulatives par chapitre** — ch.1 `switch`+`doubleJump` ; ch.2 +`dash`+`wallJump` ; ch.3 +`echo`. Tutoriels d'introduction aux bons niveaux (2-1 dash, 2-2 wall, 3-1 echo).
+- [x] **Niveaux-stubs jouables** (`levels/stub.ts`) — sol + spawn/sortie + un mur PASSÉ qui force un switch (largeur 30 = léger scroll). Les anciens level1-3 supprimés (repart de zéro).
+- [x] **Écran inter-niveau enrichi** — affiche le nom du niveau franchi + **bandeau « CHAPITRE n — NOM »** à l'entrée d'un nouveau chapitre.
+- [x] `tsc` ✓ · `npm run build` ✓
+- [x] **Vérifié en navigateur** (pas-à-pas) : 12 niveaux, HUD `NIVEAU 1/12`, dash **gated** en ch.1 et **débloqué** en ch.2 (tuto affiché), bandeau « CHAPITRE 2 — LA FRACTURE » à la transition, stub solvable (switch au mur → sortie).
+
+### Contenu réel — chapitre par chapitre ⬜ à venir (G-ch1 → G-ch2 → G-ch3)
+
+> ⏳ Polish chapitre à prévoir : variation de palette par chapitre (§6.1, +saturation ch.2 / désaturé+glow ch.3) — non fait, candidat Phase H.
 
 ---
 

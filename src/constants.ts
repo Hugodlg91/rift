@@ -242,5 +242,5 @@ export const SCENE = {
   END: 'EndScene',
 } as const;
 
-/** Total number of levels in the MVP. */
-export const TOTAL_LEVELS = 3;
+/** Total number of levels (12 across 3 chapters — Phase G). */
+export const TOTAL_LEVELS = 12;
