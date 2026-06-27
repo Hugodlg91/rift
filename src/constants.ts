@@ -162,6 +162,7 @@ export const CELL = {
   COLLAPSE: 'C', // platform that drops shortly after you step on it, then returns
   BUTTON: 'B', // pressure plate that opens its world's doors
   DOOR: 'D', // solid barrier; opens while its world's button is pressed
+  COLLECTIBLE: 'o', // optional data-shard pickup
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -196,6 +197,7 @@ export const TEX = {
   COLLAPSE: 'collapse', // tinted per world at runtime
   BUTTON: 'button', // tinted per world at runtime
   DOOR: 'door', // tinted per world at runtime
+  COLLECTIBLE: 'collectible', // tinted per world at runtime
 } as const;
 
 /** Moving-platform tuning (Phase E). */

@@ -112,7 +112,7 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 
 ---
 
-## 🪞 v2 — Phase F : Echo + éléments avancés (en cours, sous-phases F1→F3)
+## 🪞 v2 — Phase F : Echo + éléments avancés ✅ (terminée, sous-phases F1→F3)
 
 > Réf. [DEVLOG_NEXT.md](DEVLOG_NEXT.md) §5.2 (Echo) + §5.3.
 
@@ -128,9 +128,12 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 - [x] `tsc` ✓ · `npm run build` ✓
 - [x] **Vérifié en navigateur** (pas-à-pas) : effondrable solid→gone(body off)→reset solid après 2 s ; porte **solide au départ** dans son monde → **bouton enclenché → porte ouverte** (body off) ; portes inactives dans l'autre monde.
 
-### F3 — Collectibles (`o`) ⬜ à venir
+### F3 — Collectibles ✅ (terminée, en attente de review)
+- [x] **Collectibles (`o`)** — data-shards optionnels, per-monde, qui flottent (bob) et se ramassent au contact (SFX `collectible`, disparaissent). Compteur **`◆ x/y`** dans le HUD (registry `shards`/`shardsTotal`, total sur les deux mondes). Tokens de démo dans level2 (1 PASSÉ + 1 FUTUR).
+- [x] `tsc` ✓ · `npm run build` ✓
+- [x] **Vérifié en navigateur** (pas-à-pas) : HUD `◆ 0/2` → ramassage PASSÉ `◆ 1/2` (body off) → switch FUTUR (shard cachée au PASSÉ, visible au FUTUR) → ramassage `◆ 2/2`.
 
-> ⏳ **À valider à la main** : ressenti de l'Echo (placement aux pieds vs position exacte, durée 2,5 s), usage en puzzle.
+> ⏳ **À valider à la main** : ressenti de l'Echo (placement/durée), des effondrables, du couple bouton/porte ; valeur des collectibles. **Phase F complète** — reste G (12 niveaux), H (HUD v2 + polish), I (publication).
 
 ---
 

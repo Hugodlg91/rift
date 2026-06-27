@@ -69,6 +69,8 @@ export default class GameScene extends Phaser.Scene {
   private collapsibles: CollapsiblePlatform[] = [];
   private buttons: Phaser.Physics.Arcade.Image[] = []; // data: world, pressed
   private doors: Phaser.Physics.Arcade.Image[] = []; // data: world, open
+  private collectibles: Phaser.Physics.Arcade.Image[] = []; // data: world, collected
+  private shardsCollected = 0;
   // Signature Echo (Phase F): at most one active at a time.
   private echo?: EchoPlatform;
   private echoCollider?: Phaser.Physics.Arcade.Collider;
@@ -88,6 +90,8 @@ export default class GameScene extends Phaser.Scene {
     this.collapsibles = [];
     this.buttons = [];
     this.doors = [];
+    this.collectibles = [];
+    this.shardsCollected = 0;
     this.echo = undefined;
     this.echoCollider = undefined;
   }
@@ -147,6 +151,7 @@ export default class GameScene extends Phaser.Scene {
       this.buildCollapsibles(grid, w);
       this.buildButtons(grid, w);
       this.buildDoors(grid, w);
+      this.buildCollectibles(grid, w);
     });
     this.physics.add.overlap(this.player, this.hazards, () => this.onHazard());
     this.physics.add.collider(this.player, this.oneWays, undefined, (playerObj, platObj) => {
@@ -163,6 +168,11 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.buttons, (_p, b) =>
       this.onButton(b as Phaser.Physics.Arcade.Image),
     );
+    this.physics.add.overlap(this.player, this.collectibles, (_p, c) =>
+      this.onCollect(c as Phaser.Physics.Arcade.Image),
+    );
+    this.registry.set('shardsTotal', this.collectibles.length);
+    this.registry.set('shards', 0);
     this.setElementsWorld(this.worldManager.world);
 
     // --- Atmosphere (light wash, vignette, ambient particles) ----------
@@ -428,6 +438,9 @@ export default class GameScene extends Phaser.Scene {
       const active = d.getData('world') === world && !d.getData('open');
       toggle(d, active);
     }
+    for (const it of this.collectibles) {
+      toggle(it, it.getData('world') === world && !it.getData('collected'));
+    }
   }
 
   private onHazard(): void {
@@ -523,6 +536,50 @@ export default class GameScene extends Phaser.Scene {
       duration: 220,
       ease: 'Quad.easeIn',
       onComplete: () => door.setVisible(false),
+    });
+  }
+
+  // --- Collectibles (Phase F3) ---------------------------------------------
+
+  private buildCollectibles(grid: LevelCell[][], world: WorldId): void {
+    const tint = getPalette(world).glow;
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[y].length; x++) {
+        if (grid[y][x] !== CELL.COLLECTIBLE) continue;
+        const item = this.physics.add
+          .staticImage(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, TEX.COLLECTIBLE)
+          .setTint(tint)
+          .setDepth(7);
+        item.setData('world', world);
+        item.setData('collected', false);
+        this.tweens.add({
+          targets: item,
+          y: item.y - 4,
+          duration: 900,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+        this.collectibles.push(item);
+      }
+    }
+  }
+
+  private onCollect(item: Phaser.Physics.Arcade.Image): void {
+    if (item.getData('collected')) return;
+    item.setData('collected', true);
+    const body = item.body as Phaser.Physics.Arcade.StaticBody | null;
+    if (body) body.enable = false;
+    this.shardsCollected += 1;
+    this.registry.set('shards', this.shardsCollected);
+    getSfx().collectible();
+    this.tweens.add({
+      targets: item,
+      scale: 1.9,
+      alpha: 0,
+      duration: 220,
+      ease: 'Quad.easeOut',
+      onComplete: () => item.setVisible(false),
     });
   }
 

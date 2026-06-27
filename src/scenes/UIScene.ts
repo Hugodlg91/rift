@@ -12,6 +12,7 @@ export default class UIScene extends Phaser.Scene {
   private worldText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
   private deathsText!: Phaser.GameObjects.Text;
+  private shardsText!: Phaser.GameObjects.Text;
   private tutorialText!: Phaser.GameObjects.Text;
   private total = TOTAL_LEVELS;
 
@@ -56,6 +57,18 @@ export default class UIScene extends Phaser.Scene {
       .setOrigin(1, 0)
       .setScrollFactor(0);
 
+    this.shardsText = this.add
+      .text(GAME_WIDTH - 14, 60, '', {
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        fontStyle: 'bold',
+        color: '#ffe08a',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(1, 0)
+      .setScrollFactor(0);
+
     this.tutorialText = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 26, '', {
         fontFamily: 'monospace',
@@ -75,17 +88,22 @@ export default class UIScene extends Phaser.Scene {
     this.setLevel(this.registry.get('level') ?? 1);
     this.setDeaths(this.registry.get('deaths') ?? 0);
     this.setTutorial((this.registry.get('tutorial') as string) ?? '');
+    this.renderShards();
 
     this.registry.events.on('changedata-world', this.onWorld, this);
     this.registry.events.on('changedata-deaths', this.onDeaths, this);
     this.registry.events.on('changedata-level', this.onLevel, this);
     this.registry.events.on('changedata-tutorial', this.onTutorial, this);
+    this.registry.events.on('changedata-shards', this.renderShards, this);
+    this.registry.events.on('changedata-shardsTotal', this.renderShards, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.registry.events.off('changedata-world', this.onWorld, this);
       this.registry.events.off('changedata-deaths', this.onDeaths, this);
       this.registry.events.off('changedata-level', this.onLevel, this);
       this.registry.events.off('changedata-tutorial', this.onTutorial, this);
+      this.registry.events.off('changedata-shards', this.renderShards, this);
+      this.registry.events.off('changedata-shardsTotal', this.renderShards, this);
     });
   }
 
@@ -126,6 +144,12 @@ export default class UIScene extends Phaser.Scene {
   private setTutorial(text: string): void {
     if (text) this.tutorialText.setText(text);
     this.tweens.add({ targets: this.tutorialText, alpha: text ? 1 : 0, duration: 250 });
+  }
+
+  private renderShards(): void {
+    const total = (this.registry.get('shardsTotal') as number) ?? 0;
+    const got = (this.registry.get('shards') as number) ?? 0;
+    this.shardsText.setText(total > 0 ? `◆ ${got}/${total}` : '');
   }
 
   private pulse(): void {

@@ -47,6 +47,7 @@ export default class BootScene extends Phaser.Scene {
     this.createCollapseTexture();
     this.createButtonTexture();
     this.createDoorTexture();
+    this.createCollectibleTexture();
     this.makeVignette();
     this.makeGlow();
 
@@ -362,6 +363,24 @@ export default class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0xffffff, 1);
     g.strokeRect(1, 0, w - 2, h);
     g.generateTexture(TEX.DOOR, w, h);
+    g.destroy();
+  }
+
+  /** Collectible data-shard: a small diamond with a halo (white → tinted). */
+  private createCollectibleTexture(): void {
+    const s = 14;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0xffffff, 0.3);
+    g.fillCircle(s / 2, s / 2, s / 2); // soft halo
+    g.fillStyle(0xffffff, 1);
+    g.beginPath();
+    g.moveTo(s / 2, 1);
+    g.lineTo(s - 2, s / 2);
+    g.lineTo(s / 2, s - 1);
+    g.lineTo(2, s / 2);
+    g.closePath();
+    g.fillPath(); // diamond
+    g.generateTexture(TEX.COLLECTIBLE, s, s);
     g.destroy();
   }
 
