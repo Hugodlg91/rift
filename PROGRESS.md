@@ -4,7 +4,7 @@
 > Mis à jour au fur et à mesure que les tâches sont terminées.
 
 **Session démarrée :** 2026-06-08
-**Statut global :** 🟢 MVP + v2 Phases A (game feel), B (direction artistique) & C (audio) — typecheck + build OK
+**Statut global :** 🟢 MVP + v2 Phases A (game feel), B (direction artistique), C (audio) & D (caméra & niveaux élaborés) — typecheck + build OK
 
 ---
 
@@ -77,6 +77,22 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 
 - [x] **Vérifié en navigateur** (instrumentation Web Audio) : AudioContext `running` (master 0.35 → compressor → destination), drone = 5 oscillateurs au lancement, `jump` = 1 SFX, switch = 3 oscillateurs (2 tons + glitch), mute `M` = master → 0 → 0.35, aucun son au repos.
 - [x] **Fix glitch trouvé en vérif** : le SFX `land` se redéclenchait ~40×/atterrissage (micro-rebond au sol → `onGround` flickere → bord de landing re-déclenché). Corrigé par un seuil de temps de vol (`FEEL.LAND_MIN_AIR_MS`) ⇒ **un contact = un seul atterrissage** (corrige aussi poussière/squash).
+
+---
+
+## 🎥 v2 — Phase D : Caméra & niveaux élaborés (terminée, en attente de review)
+
+> Réf. [DEVLOG_NEXT.md](DEVLOG_NEXT.md) §6.3-6.5, §10.
+
+- [x] **Caméra** `startFollow` + **deadzone** (`CAMERA.DEADZONE_*`) + **lookahead** (offset eased dans le sens du déplacement). Bloc `CAMERA` exposé dans `constants.ts`.
+- [x] **Parallax compatible scroll** — `ParallaxBackground` passé en **`TileSprite`** plein-viewport (`scrollFactor 0`) ; `update(camera)` règle `tilePositionX/Y = scrollX/Y × facteur` ⇒ couverture garantie quelle que soit la largeur, cross-fade conservé.
+- [x] **Format multi-écrans** — authoring **ASCII** (`levels/parse.ts` : `makeLevel`/`parseGrid`, tokens `# . S E P`). level1 (46), level2 (50), level3 (54) **réécrits** en ~2 écrans, hauteur 1 écran (scroll horizontal). `validateLevel` étendu au checkpoint `P`, `validateAllLevels()` au boot en dev.
+- [x] **Checkpoints** (`P`) — pilier dormant qui **s'illumine** + `getSfx().checkpoint()` à l'activation ; `Player.setCheckpoint` déplace le point de respawn ⇒ mort = retour au dernier checkpoint.
+- [x] **Écran inter-niveau** — `InterLevelScene` (niveau franchi + morts, `ENTRÉE/ESPACE` pour continuer) intercalé par `onReachExit` ; le dernier niveau va direct à l'écran de fin.
+- [x] `tsc` ✓ · `npm run build` ✓
+- [x] **Vérifié en navigateur** (pas-à-pas déterministe, onglet preview masqué = rAF gelé) : boot→menu→jeu sans exception ; level1 = 1472 px / level2 = 1600 px (multi-écrans) ; `scrollX` 0→443 (max 672), `followOffset` −96 ; parallax suit (loin ≈44, près ≈265) ; mur PASSÉ bloque, switch ouvre ; checkpoint activé → respawn au checkpoint (x688, pas x80) ; sortie → `InterLevelScene` → niveau 2.
+
+> ⏳ **À valider à la main** : ressenti caméra (lerp/deadzone/lookahead), lisibilité du parallax en scroll, design/jouabilité des 3 niveaux élargis.
 
 ---
 

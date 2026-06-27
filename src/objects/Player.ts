@@ -64,8 +64,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   private accentGlow?: Phaser.FX.Glow;
 
   isAlive = true;
-  readonly spawnX: number;
-  readonly spawnY: number;
+  // Respawn point — starts at the level spawn, moves to an activated checkpoint.
+  private spawnX: number;
+  private spawnY: number;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, TEX.PLAYER);
@@ -115,6 +116,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   setAccent(world: WorldId): void {
     if (this.accentGlow) this.accentGlow.color = getPalette(world).accent;
     else this.setTexture(playerAccentKey(world));
+  }
+
+  /** Move the respawn point (e.g. to an activated checkpoint). */
+  setCheckpoint(x: number, y: number): void {
+    this.spawnX = x;
+    this.spawnY = y;
   }
 
   override update(delta: number): void {

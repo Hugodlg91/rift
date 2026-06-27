@@ -14,6 +14,7 @@ import {
   tileEdgeKey,
   tileKey,
 } from '../constants';
+import { validateAllLevels } from '../levels';
 import type { WorldId } from '../types';
 
 type Ramp = { shadow: number; base: number; highlight: number };
@@ -30,6 +31,7 @@ export default class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    if (import.meta.env.DEV) validateAllLevels();
     this.buildTiles();
     this.buildParallax();
     this.createPlayerTexture(TEX.PLAYER); // neutral (WebGL: rim comes from postFX glow)
@@ -38,6 +40,7 @@ export default class BootScene extends Phaser.Scene {
     this.createExitTexture(TEX.EXIT_PAST, PALETTE.past.glow, PALETTE.past.accent);
     this.createExitTexture(TEX.EXIT_FUTURE, PALETTE.future.glow, PALETTE.future.accent);
     this.createDustTexture();
+    this.createCheckpointTexture();
     this.makeVignette();
     this.makeGlow();
 
@@ -237,6 +240,22 @@ export default class BootScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 1);
     g.fillCircle(3, 3, 3);
     g.generateTexture(TEX.DUST, 6, 6);
+    g.destroy();
+  }
+
+  /** A 1×2-tile monolith. Drawn white so a world-accent tint colours it; the
+   *  GameScene dims it when dormant and lights it on activation. */
+  private createCheckpointTexture(): void {
+    const w = TILE_SIZE;
+    const h = TILE_SIZE * 2;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0xffffff, 0.8);
+    g.fillRoundedRect(w / 2 - 5, 2, 10, h - 4, 4);
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(w / 2 - 2, 7, 4, h - 14); // bright inner core
+    g.fillStyle(0xffffff, 0.9);
+    g.fillRoundedRect(w / 2 - 9, h - 8, 18, 6, 2); // base
+    g.generateTexture(TEX.CHECKPOINT, w, h);
     g.destroy();
   }
 

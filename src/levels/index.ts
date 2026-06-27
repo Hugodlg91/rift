@@ -47,6 +47,15 @@ export function validateLevel(level: LevelData, name: string): void {
       throw new Error(`${name}: '${token}' mismatch — past(${p.x},${p.y}) vs future(${f.x},${f.y})`);
     }
   }
+
+  // Checkpoint 'P' is optional, but must sit at the same cell in both timelines
+  // (respawn is world-agnostic) if it's there at all.
+  const cp = findToken(level.past, 'P');
+  const cf = findToken(level.future, 'P');
+  if (!!cp !== !!cf) throw new Error(`${name}: checkpoint 'P' present in only one timeline`);
+  if (cp && cf && (cp.x !== cf.x || cp.y !== cf.y)) {
+    throw new Error(`${name}: 'P' mismatch — past(${cp.x},${cp.y}) vs future(${cf.x},${cf.y})`);
+  }
 }
 
 /** Validate every level; call once at boot in development. */

@@ -140,6 +140,20 @@ export const CELL = {
   SOLID: 1,
   SPAWN: 'S',
   EXIT: 'E',
+  CHECKPOINT: 'P',
+} as const;
+
+// ---------------------------------------------------------------------------
+//  Camera (Phase D) — follow + deadzone + lookahead for multi-screen levels
+// ---------------------------------------------------------------------------
+
+export const CAMERA = {
+  LERP_X: 0.12, // how snappily the camera eases toward the player on X (0..1)
+  LERP_Y: 0.16, // …and on Y
+  DEADZONE_W: 220, // player can move this far horizontally before the camera scrolls
+  DEADZONE_H: 160, // …and this far vertically
+  LOOKAHEAD_X: 96, // px the camera leads ahead in the player's travel direction
+  LOOKAHEAD_LERP: 0.05, // how fast the lookahead offset eases (per frame, frame-rate-compensated)
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -153,6 +167,7 @@ export const TEX = {
   DUST: 'dust',
   VIGNETTE: 'vignette',
   GLOW: 'glow',
+  CHECKPOINT: 'checkpoint',
 } as const;
 
 /** Number of random interior tile variants generated per world. */
@@ -176,6 +191,7 @@ export const SCENE = {
   MENU: 'MenuScene',
   GAME: 'GameScene',
   UI: 'UIScene',
+  INTER: 'InterLevelScene',
   END: 'EndScene',
 } as const;
 
