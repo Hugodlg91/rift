@@ -1,18 +1,31 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, getPalette, PALETTE, TEX } from '../constants';
+import { GAME_HEIGHT, GAME_WIDTH, getChapterGrade, getPalette, PALETTE, TEX } from '../constants';
+import type { ChapterGrade } from '../constants';
 import type { WorldId } from '../types';
+
+const BLEND: Record<ChapterGrade['tintBlend'], Phaser.BlendModes> = {
+  normal: Phaser.BlendModes.NORMAL,
+  screen: Phaser.BlendModes.SCREEN,
+  multiply: Phaser.BlendModes.MULTIPLY,
+};
 
 /**
  * Scene-wide atmosphere: a full-screen light wash (OVERLAY) that unifies the
  * palette, a vignette that focuses the eye, and per-world ambient particles
  * (slow falling ash in the PAST, rising data-motes in the FUTURE).
+ *
+ * A per-chapter colour grade (see {@link getChapterGrade}) modulates the wash
+ * strength, vignette darkness and adds a full-screen tint, giving each chapter
+ * its own identity on top of the shared per-world palette.
  */
 export default class Atmosphere {
   private readonly wash: Phaser.GameObjects.Rectangle;
   private readonly pastAmbient: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly futureAmbient: Phaser.GameObjects.Particles.ParticleEmitter;
+  private readonly grade: ChapterGrade;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, chapter = 1) {
+    this.grade = getChapterGrade(chapter);
     this.pastAmbient = scene.add
       .particles(0, 0, TEX.DUST, {
         x: { min: 0, max: GAME_WIDTH },
@@ -51,19 +64,32 @@ export default class Atmosphere {
       .setScrollFactor(0);
 
     this.wash = scene.add
-      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, PALETTE.past.glow, 0.12)
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, PALETTE.past.glow, this.grade.wash)
       .setScrollFactor(0)
       .setDepth(40)
       .setBlendMode(Phaser.BlendModes.OVERLAY);
 
+    // Per-chapter grade tint (skipped when the chapter calls for none).
+    if (this.grade.tintAlpha > 0) {
+      scene.add
+        .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, this.grade.tint, this.grade.tintAlpha)
+        .setScrollFactor(0)
+        .setDepth(50) // above the wash, below the vignette
+        .setBlendMode(BLEND[this.grade.tintBlend]);
+    }
+
     // Vignette sits above the gameplay; the HUD is a separate scene on top.
-    scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, TEX.VIGNETTE).setScrollFactor(0).setDepth(60);
+    scene.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, TEX.VIGNETTE)
+      .setScrollFactor(0)
+      .setDepth(60)
+      .setAlpha(this.grade.vignette);
 
     this.setWorld('past');
   }
 
   setWorld(world: WorldId): void {
-    this.wash.setFillStyle(getPalette(world).glow, 0.12);
+    this.wash.setFillStyle(getPalette(world).glow, this.grade.wash);
     if (world === 'past') {
       this.pastAmbient.start();
       this.futureAmbient.stop();
