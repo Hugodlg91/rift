@@ -54,6 +54,44 @@ export function getPalette(id: WorldId): (typeof PALETTE)[WorldId] {
 }
 
 // ---------------------------------------------------------------------------
+//  Per-chapter colour grading (Phase G) — one visual identity per chapter,
+//  layered on top of the per-world PALETTE without touching the renderer.
+//  Renderer-agnostic levers (wash / vignette / grade overlay) work everywhere;
+//  `saturate` is a WebGL-only ColorMatrix bonus that degrades to a no-op.
+// ---------------------------------------------------------------------------
+
+export interface ChapterGrade {
+  /** Light-wash alpha (Atmosphere OVERLAY layer). */
+  wash: number;
+  /** Vignette image alpha (1 = full strength). */
+  vignette: number;
+  /** Full-screen grade-tint colour. */
+  tint: number;
+  /** Grade-tint alpha (0 disables the overlay). */
+  tintAlpha: number;
+  /** Blend mode for the grade tint. */
+  tintBlend: 'normal' | 'screen' | 'multiply';
+  /** WebGL-only saturation delta (skipped at 0; negative = desaturate). */
+  saturate: number;
+  /** Multiplier on interactive-element glow scale (the exit halo). */
+  glow: number;
+}
+
+export const CHAPTER_GRADE: Record<number, ChapterGrade> = {
+  // 1 — LES RUINES : base neutre, chaude et mélancolique (telle qu'écrite dans PALETTE).
+  1: { wash: 0.12, vignette: 0.82, tint: 0x000000, tintAlpha: 0, tintBlend: 'normal', saturate: 0, glow: 1.0 },
+  // 2 — LA FRACTURE : électrique — relevé, plus saturé, léger bloom chaud.
+  2: { wash: 0.15, vignette: 0.72, tint: 0xff7a3c, tintAlpha: 0.06, tintBlend: 'screen', saturate: 0.45, glow: 1.18 },
+  // 3 — TEMPS PROFOND : froid, profond, désaturé ; vignette forte, le glow prend le relais.
+  3: { wash: 0.16, vignette: 1.0, tint: 0x070a16, tintAlpha: 0.34, tintBlend: 'normal', saturate: -0.5, glow: 1.5 },
+};
+
+/** Grade for a chapter, falling back to chapter 1's neutral baseline. */
+export function getChapterGrade(chapter: number): ChapterGrade {
+  return CHAPTER_GRADE[chapter] ?? CHAPTER_GRADE[1];
+}
+
+// ---------------------------------------------------------------------------
 //  Worlds (identity + the handful of colours other systems still reference)
 // ---------------------------------------------------------------------------
 

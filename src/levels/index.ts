@@ -1,5 +1,6 @@
 import type { Ability, LevelData, LevelCell, LevelMeta } from '../types';
 import { stubLevel } from './stub';
+import { CHAPTER1 } from './chapter1';
 
 /** The three chapters, each with its identity and signature mechanic. */
 export const CHAPTERS: Record<number, { name: string }> = {
@@ -20,10 +21,10 @@ const CH3: Ability[] = ['switch', 'doubleJump', 'dash', 'wallJump', 'echo'];
  * by chapter.
  */
 export const LEVELS: readonly LevelMeta[] = [
-  { id: 1, name: '1-1', chapter: 1, abilities: CH1, data: stubLevel(12) },
-  { id: 2, name: '1-2', chapter: 1, abilities: CH1, data: stubLevel(16) },
-  { id: 3, name: '1-3', chapter: 1, abilities: CH1, data: stubLevel(10) },
-  { id: 4, name: '1-4', chapter: 1, abilities: CH1, data: stubLevel(18) },
+  { id: 1, name: '1-1', chapter: 1, abilities: CH1, data: CHAPTER1[0] },
+  { id: 2, name: '1-2', chapter: 1, abilities: CH1, data: CHAPTER1[1] },
+  { id: 3, name: '1-3', chapter: 1, abilities: CH1, data: CHAPTER1[2] },
+  { id: 4, name: '1-4', chapter: 1, abilities: CH1, data: CHAPTER1[3] },
   { id: 5, name: '2-1', chapter: 2, abilities: ['switch', 'doubleJump', 'dash'], introduces: 'dash', data: stubLevel(13) },
   { id: 6, name: '2-2', chapter: 2, abilities: CH2, introduces: 'wallJump', data: stubLevel(15) },
   { id: 7, name: '2-3', chapter: 2, abilities: CH2, data: stubLevel(11) },

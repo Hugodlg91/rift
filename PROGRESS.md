@@ -4,7 +4,7 @@
 > Mis à jour au fur et à mesure que les tâches sont terminées.
 
 **Session démarrée :** 2026-06-08
-**Statut global :** 🟢 MVP + v2 Phases A (game feel), B (direction artistique), C (audio), D (caméra & niveaux élaborés) & E (capacités + hazards) — typecheck + build OK
+**Statut global :** 🟢 MVP + v2 Phases A→F + Phase G (framework 12 niveaux/3 chapitres + **Chapitre 1 « LES RUINES » : 4 niveaux from scratch + DA par chapitre**) — typecheck + build OK
 
 ---
 
@@ -149,9 +149,25 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 - [x] `tsc` ✓ · `npm run build` ✓
 - [x] **Vérifié en navigateur** (pas-à-pas) : 12 niveaux, HUD `NIVEAU 1/12`, dash **gated** en ch.1 et **débloqué** en ch.2 (tuto affiché), bandeau « CHAPITRE 2 — LA FRACTURE » à la transition, stub solvable (switch au mur → sortie).
 
-### Contenu réel — chapitre par chapitre ⬜ à venir (G-ch1 → G-ch2 → G-ch3)
+### Contenu réel — Chapitre 1 : LES RUINES ✅ (terminé, en attente de review)
 
-> ⏳ Polish chapitre à prévoir : variation de palette par chapitre (§6.1, +saturation ch.2 / désaturé+glow ch.3) — non fait, candidat Phase H.
+> Capacités : switch + double saut. Hazard signature : les fosses. Méthode enseigner → tester → twister → intégrer.
+
+- [x] **Builder de niveau** (`levels/builder.ts`) — `GridBuilder` (stampage `set`/`hLine`/`vLine`/`rect`/`frame`/`clone`) : largeur/hauteur **garanties par construction**, stamp hors-limites = exception ⇒ les fautes de coordonnées sortent à la validation, pas dans le navigateur. Pattern : `base` partagée → `clone()` en PASSÉ/FUTUR → on stampe les diffs par timeline (S/E/P forcément alignés).
+- [x] **4 niveaux from scratch** (`levels/chapter1.ts`, solutions documentées en tête) :
+  - **1-1 ENSEIGNER** (42×14) — marche, petite fosse, corniche+shard, premier **mur de phase** PASSÉ (F→FUTUR ouvert).
+  - **1-2 TESTER** (50×14) — grand vide = **double saut**, checkpoint, énigme switch (mur PASSÉ vs **pierres de gué** FUTUR), intro **one-way** + shard.
+  - **1-3 TWISTER** (54×14) — couloir de **murs alternés** (switch en boucle, sol plein = jamais de chute au switch), 2 shards d'exploration, respiration.
+  - **1-4 INTÉGRER** (66×14) — fosses + mur de phase + montée + one-way + **grand vide double saut** sous checkpoint + énigme finale de switch, 3 shards.
+- [x] **DA par chapitre** (`CHAPTER_GRADE` dans constants ; `Atmosphere` + `GameScene`) — chaque chapitre a son identité par-dessus la palette par monde : ch.1 **base neutre chaude**, ch.2 **+saturation/bloom** (relevé), ch.3 **désaturé/sombre + glow accru**. Leviers : alpha du light-wash, alpha de la vignette, calque de teinte plein écran (blend par chapitre), **ColorMatrix WebGL** (saturation, no-op gracieux en Canvas), multiplicateur de glow de la sortie.
+- [x] `tsc --noEmit` ✓ · `npm run build` ✓
+- [x] **Vérifié en navigateur** (Playwright headless, Chromium) : boot→menu→**1-1** sans exception ; rendu DA ch.1 (PASSÉ chaud / FUTUR froid + vignette + parallax) ; **switch F** opère et re-grade la scène ; **toggle des collectibles par monde** (shard visible au PASSÉ, masqué au FUTUR) ; HUD `NIVEAU 1/12` + `◆ 0/1` ; liseré d'accent joueur = monde courant.
+
+> ⏳ **À valider à la main** : franchissement réel des sauts/fosses (le déplacement touche-maintenue n'est pas testable en headless — rAF throttlé), ressenti et difficulté des 4 niveaux, lisibilité du grade ch.1. Calibrage des gaps fait d'après la physique documentée (saut ≈ 5 tuiles, double ≈ 9) avec marge.
+
+### Chapitres 2 & 3 ⬜ à venir (G-ch2 → G-ch3)
+
+> Réutilisent le builder + `CHAPTER_GRADE` (déjà câblé pour les 3 chapitres). ch.2 : +dash +saut mural, piques/lasers + plateformes mobiles. ch.3 : +echo, effondrables + boutons/portes. Les stubs des niveaux 5-12 restent en place en attendant.
 
 ---
 

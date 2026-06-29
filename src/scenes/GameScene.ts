@@ -4,6 +4,7 @@ import {
   CELL,
   ECHO,
   GAME_HEIGHT,
+  getChapterGrade,
   getPalette,
   PALETTE,
   SCENE,
@@ -99,6 +100,7 @@ export default class GameScene extends Phaser.Scene {
   create(): void {
     const meta = LEVELS[this.levelIndex];
     const level = meta.data;
+    const grade = getChapterGrade(meta.chapter);
     if (import.meta.env.DEV) validateLevel(level, `level${this.levelIndex + 1}`);
 
     const widthPx = level.width * TILE_SIZE;
@@ -176,7 +178,13 @@ export default class GameScene extends Phaser.Scene {
     this.setElementsWorld(this.worldManager.world);
 
     // --- Atmosphere (light wash, vignette, ambient particles) ----------
-    this.atmosphere = new Atmosphere(this);
+    this.atmosphere = new Atmosphere(this, meta.chapter);
+
+    // Per-chapter saturation grade (WebGL only; a no-op under Canvas). Pushes
+    // chapter 2 electric and chapter 3 cold/washed-out without new assets.
+    if (this.game.renderer.type === Phaser.WEBGL && grade.saturate !== 0) {
+      this.cameras.main.postFX.addColorMatrix().saturate(grade.saturate, true);
+    }
 
     // --- Audio (shared SFX bus + per-world ambient drone) --------------
     const sfx = getSfx();
@@ -193,9 +201,19 @@ export default class GameScene extends Phaser.Scene {
     this.exitSprite = this.add.sprite(exit.x, exit.y, TEX.EXIT_PAST).setDepth(4);
     this.physics.add.existing(this.exitSprite, true);
     this.tweens.add({
-      targets: [this.exitSprite, this.exitGlow],
+      targets: this.exitSprite,
       scale: { from: 0.8, to: 1.15 },
       alpha: { from: 0.7, to: 1 },
+      duration: 720,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    // The halo scales with the chapter grade — chapter 3 leans on glow.
+    this.tweens.add({
+      targets: this.exitGlow,
+      scale: { from: 0.8 * grade.glow, to: 1.3 * grade.glow },
+      alpha: { from: 0.6, to: 1 },
       duration: 720,
       yoyo: true,
       repeat: -1,
