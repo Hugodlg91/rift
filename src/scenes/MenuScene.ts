@@ -196,14 +196,17 @@ export default class MenuScene extends Phaser.Scene {
   private updateSelectionDisplay(): void {
     const items = this.getActiveItems();
     items.forEach((item, idx) => {
+      // Remove any existing arrows so they don't accumulate
+      const rawText = item.text.replace(/^►\s*|\s*◄$/g, '');
+      
       if (idx === this.selectedIndex) {
         item.setColor('#ffffff');
         item.setScale(1.2);
-        item.setText(`► ${item.text.replace(/^►\s*/, '')} ◄`);
+        item.setText(`► ${rawText} ◄`);
       } else {
         item.setColor('#a8a8b4');
         item.setScale(1.0);
-        item.setText(item.text.replace(/^►\s*|\s*◄$/g, ''));
+        item.setText(rawText);
       }
     });
   }

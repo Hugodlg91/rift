@@ -178,14 +178,15 @@ function level2_4(): LevelData {
   
   // Dernière corniche avec dash
   base.hLine(62, 9, 5, '#'); // plafond bas y=9
-  spikes(base, 64, 1, 10); // pic y=10
+  base.hLine(64, 11, 2, '#'); // sol sous les pics
+  spikes(base, 64, 1, 10); // pic y=10, soutenu par le sol y=11
   
   const past = base.clone();
   past.vLine(70, 1, 11, '#'); // mur de phase PASSÉ (fin)
-  past.set(28, STAND - 1, 'M'); // mobile dans le PASSÉ
   past.set(38, 4, 'o');
   
   const future = base.clone();
+  future.set(28, STAND - 1, 'M'); // mobile dans le FUTUR uniquement
   future.set(52, 8, 'o'); // shard grand vide
   // Mur de phase au milieu du saut mural de la tour (force le switch)
   future.vLine(35, 2, 6, '.'); // la paroi disparait dans le futur !
