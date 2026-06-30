@@ -3,53 +3,49 @@ import type { LevelData } from '../types';
 
 /**
  * CHAPITRE 1 — LES RUINES.  Capacités : switch (F) + double saut.
- * Hazard signature : les fosses (chute = mort). Aucun pic/laser ici (réservés
- * au ch.2) : la difficulté vient de la lecture des deux mondes, pas du danger.
- *
- * Méthode Nintendo enseigner → tester → twister → intégrer :
- *   1-1 ENSEIGNER  — bouger, sauter, et le tout premier mur de phase.
- *   1-2 TESTER     — un grand vide qui exige le double saut + un passage qui
- *                    n'existe qu'au FUTUR (pierres de gué).
- *   1-3 TWISTER    — couloir de murs alternés : on switche en boucle (respiration).
- *   1-4 INTÉGRER   — long parcours : fosses, murs de phase, plateforme one-way,
- *                    double saut sous checkpoint, et deux énigmes de switch.
- *
- * Repères de calibrage (constants.ts) : saut ≈ 4–5 tuiles de haut, ~5 de portée ;
- * double saut ≈ 8–9 de portée ; sol = lignes 12-13, le joueur tient sur la ligne 11.
+ * Hazard signature : les fosses (chute = mort). Aucun pic/laser ici.
+ * Refonte orientée "Kishōtenketsu" (4 temps) avec rythme et verticalité.
  */
 
 const H = 14;
-const STAND = 11; // ligne où posent S / E / P (juste au-dessus du sol)
+const STAND = 11;
 
-/** Creuse une fosse (vide jusqu'à l'abîme) : enlève le sol sur `len` colonnes. */
+/** Creuse une fosse (vide jusqu'à l'abîme). */
 function pit(g: GridBuilder, x: number, len: number): void {
-  for (let i = 0; i < len; i++) {
-    g.set(x + i, H - 2, '.');
-    g.set(x + i, H - 1, '.');
-  }
+  g.clearCol(x, len, H - 2);
 }
 
 // ---------------------------------------------------------------------------
 // 1-1 — ENSEIGNER
 // ---------------------------------------------------------------------------
-// Solution : avancer, hop sur la marche (x8), franchir la petite fosse (x13-15),
-// monter sur la corniche (x19-21) pour le shard, puis au mur de phase PASSÉ (x28)
-// presser F → le FUTUR est ouvert → traverser, dernière fosse (x33-34) → sortie.
+// Intro douce. Escalade simple, saut au-dessus d'une fosse.
+// Le mur de phase est placé sur un sol ferme pour enseigner le switch sans stress.
 function level1_1(): LevelData {
-  const W = 42;
+  const W = 52;
   const base = new GridBuilder(W, H).frame();
   base.set(2, STAND, 'S');
-  base.set(W - 3, STAND, 'E'); // x39
-  base.set(8, STAND, '#'); // marche d'apprentissage
-  pit(base, 13, 3); // petite fosse — un saut simple
-  base.hLine(19, 9, 3, '#'); // corniche
-  pit(base, 33, 2); // dernière fosse
+  base.set(W - 3, STAND, 'E');
+
+  // 1. Apprendre à sauter sur une plateforme
+  base.rect(8, 9, 4, 5, '#'); // marche 1
+  base.rect(12, 7, 4, 7, '#'); // marche 2
+
+  // 2. Fosse d'apprentissage (sécurisée car on tombe de haut vers bas)
+  pit(base, 16, 3);
+  base.rect(19, STAND, 6, 3, '#'); // atterrissage en contrebas
+
+  // 3. Mur de phase bloquant le passage sur un sol sûr
+  base.rect(25, 9, 8, 5, '#');
+  base.set(36, STAND, 'P'); // Checkpoint
+
+  pit(base, 40, 3); // Dernière fosse pour tester avant la fin
 
   const past = base.clone();
-  past.set(20, 7, 'o'); // shard au-dessus de la corniche
-  past.vLine(28, 1, 11, '#'); // MUR DE PHASE (PASSÉ uniquement)
+  past.set(13, 5, 'o'); // Shard sur la marche 2
+  past.vLine(30, 1, 8, '#'); // Mur de phase PASSÉ sur la plateforme x=25
 
-  const future = base.clone(); // au FUTUR le passage est libre
+  const future = base.clone();
+  future.set(44, 8, 'o'); // Shard de fin
 
   return build(past, future);
 }
@@ -57,56 +53,69 @@ function level1_1(): LevelData {
 // ---------------------------------------------------------------------------
 // 1-2 — TESTER
 // ---------------------------------------------------------------------------
-// Solution : grand vide (x10-16) = double saut obligatoire → checkpoint (x20).
-// Énigme : au PASSÉ un mur (x30) barre la fosse (x26-33) ; switch FUTUR → des
-// pierres de gué (x28, x31) apparaissent → traverser. Fin : sauter à travers la
-// plateforme one-way (x42) par en dessous pour cueillir le shard au-dessus.
+// Développement du double saut et des pierres de gué.
 function level1_2(): LevelData {
-  const W = 50;
+  const W = 60;
   const base = new GridBuilder(W, H).frame();
   base.set(2, STAND, 'S');
-  base.set(W - 3, STAND, 'E'); // x47
-  pit(base, 10, 7); // grand vide — double saut
-  base.set(20, STAND, 'P'); // checkpoint
-  pit(base, 26, 8); // fosse de l'énigme de switch
-  base.set(42, 9, '='); // plateforme one-way
+  base.set(W - 3, STAND, 'E');
+
+  // 1. Grand vide nécessitant le double saut
+  base.rect(6, 8, 4, 6, '#');
+  pit(base, 10, 6); // fosse de 6 de large
+  base.rect(16, 8, 4, 6, '#');
+  base.set(21, STAND, 'P');
+
+  // 2. Énigme de la fosse et des pierres de gué
+  pit(base, 25, 12);
+  base.rect(37, 7, 8, 7, '#'); // arrivée en hauteur
+
+  // 3. Plateforme one-way pour redescendre
+  base.hLine(48, 7, 4, '=');
+  base.set(51, STAND, 'P'); // check 2 avant la fin
 
   const past = base.clone();
-  past.vLine(30, 1, 11, '#'); // mur PASSÉ au milieu de la fosse
+  past.vLine(31, 1, 13, '#'); // Grand mur au milieu de la fosse, force à chercher une alternative
 
   const future = base.clone();
-  future.set(28, 10, '#'); // pierres de gué (FUTUR)
-  future.set(31, 10, '#');
-  future.set(42, 7, 'o'); // shard au-dessus du one-way
+  future.vLine(31, 1, 13, '.'); // Ouvre le mur
+  // Pierres de gué pour traverser le vide immense
+  future.set(27, 8, '#');
+  future.set(33, 6, '#');
+  future.set(49, 5, 'o'); // Shard au-dessus du one-way
 
   return build(past, future);
 }
 
 // ---------------------------------------------------------------------------
-// 1-3 — TWISTER  (respiration : pas de fosse mortelle avant la toute fin)
+// 1-3 — TWISTER
 // ---------------------------------------------------------------------------
-// Solution : couloir de murs alternés. Départ PASSÉ → mur PASSÉ (x12) : F→FUTUR
-// (shard à x16) → mur FUTUR (x20) : F→PASSÉ (shard sur la corniche x24-26) →
-// mur PASSÉ (x28) : F→FUTUR → mur FUTUR (x36) : F→PASSÉ → petit vide (x45-48) → sortie.
-// Le sol est plein dans les deux mondes : switcher ne fait jamais tomber.
+// Le couloir de switch en version "zigzag vertical".
+// On doit switcher tout en montant des plateformes.
 function level1_3(): LevelData {
-  const W = 54;
+  const W = 58;
   const base = new GridBuilder(W, H).frame();
   base.set(2, STAND, 'S');
-  base.set(W - 3, STAND, 'E'); // x51
-  base.hLine(24, 9, 3, '#'); // corniche centrale (rythme + shard)
-  base.set(30, STAND, 'P'); // checkpoint
-  pit(base, 45, 4); // unique fosse, juste avant la sortie
+  base.set(W - 3, STAND, 'E');
+
+  // Structure en escalier fermée par des murs
+  base.rect(8, 8, 6, 6, '#');
+  base.rect(18, 5, 6, 9, '#');
+  base.rect(28, 2, 6, 12, '#');
+  base.set(38, STAND, 'P');
+  
+  pit(base, 42, 5); // Fosse terminale
 
   const past = base.clone();
-  past.vLine(12, 1, 11, '#'); // murs PASSÉ
-  past.vLine(28, 1, 11, '#');
-  past.set(25, 7, 'o'); // shard sur la corniche (visible quand on est au PASSÉ)
+  past.vLine(14, 1, 11, '#'); // bloque l'accès à la plateforme 1
+  past.vLine(24, 1, 11, '#'); // bloque l'accès à la plateforme 2
+  past.set(20, 3, 'o');
 
   const future = base.clone();
-  future.vLine(20, 1, 11, '#'); // murs FUTUR
-  future.vLine(36, 1, 11, '#');
-  future.set(16, 10, 'o'); // shard du couloir FUTUR
+  future.vLine(11, 1, 7, '#'); // bloque le saut sur la plateforme 1
+  future.vLine(21, 1, 4, '#'); // bloque le saut sur la plateforme 2
+  future.vLine(34, 1, 11, '#'); // bloque la redescente
+  future.set(44, 7, 'o');
 
   return build(past, future);
 }
@@ -114,37 +123,37 @@ function level1_3(): LevelData {
 // ---------------------------------------------------------------------------
 // 1-4 — INTÉGRER
 // ---------------------------------------------------------------------------
-// Solution : fosse (x10-12). Mur PASSÉ (x17) → FUTUR : pierre de gué (x20) sur la
-// fosse (x18-22). Montée de marches (x26/29/32) + one-way (x35) pour redescendre ;
-// shard PASSÉ caché à x29 (switch sur une marche). Checkpoint (x37) puis GRAND
-// vide (x40-46) = double saut. Énigme finale : au FUTUR un mur (x55) barre la
-// fosse (x54-58) ; switch PASSÉ → pierre de gué (x56) → sortie.
+// Le grand final : switch en plein vol, grandes hauteurs.
 function level1_4(): LevelData {
-  const W = 66;
+  const W = 76;
   const base = new GridBuilder(W, H).frame();
   base.set(2, STAND, 'S');
-  base.set(W - 3, STAND, 'E'); // x63
-  base.set(7, STAND, '#'); // marche
-  pit(base, 10, 3); // fosse simple
-  pit(base, 18, 5); // fosse de l'énigme seg.2
-  base.set(26, 10, '#'); // montée
-  base.set(29, 9, '#');
-  base.set(32, 9, '#');
-  base.set(35, 9, '='); // one-way pour redescendre
-  base.set(37, STAND, 'P'); // checkpoint avant le grand vide
-  pit(base, 40, 7); // GRAND vide — double saut
-  pit(base, 54, 5); // fosse de l'énigme finale
+  base.set(W - 3, STAND, 'E');
+
+  base.rect(8, 9, 3, 5, '#');
+  pit(base, 11, 4);
+  base.rect(15, 7, 4, 7, '#');
+  base.set(21, STAND, 'P');
+
+  // Grand gouffre avec switch en l'air obligatoire
+  pit(base, 25, 10);
+  base.rect(35, 9, 5, 5, '#');
+  
+  base.set(42, STAND, 'P');
+
+  // Montée monumentale
+  base.rect(48, 8, 3, 6, '#');
+  base.rect(54, 5, 3, 9, '#');
+  base.hLine(60, 5, 3, '='); // redescendre
+  pit(base, 66, 4);
 
   const past = base.clone();
-  past.vLine(17, 1, 11, '#'); // mur PASSÉ (force le FUTUR en seg.2)
-  past.set(29, 7, 'o'); // shard de la montée
-  past.set(56, 10, '#'); // pierre de gué de l'énigme finale (PASSÉ)
-  past.set(56, 8, 'o'); // shard au-dessus
+  past.vLine(30, 1, 13, '#'); // Mur au milieu du grand gouffre
+  past.set(16, 5, 'o');
+  past.set(61, 3, 'o');
 
   const future = base.clone();
-  future.set(20, 10, '#'); // pierre de gué seg.2 (FUTUR)
-  future.set(20, 8, 'o'); // shard au-dessus
-  future.vLine(55, 1, 11, '#'); // mur FUTUR (force le PASSÉ en fin)
+  future.set(51, 6, '#'); // pierre de gué pour la grande montée
 
   return build(past, future);
 }
