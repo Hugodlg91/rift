@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DENIED_FLASH_COLOR, getWorld, otherWorld, SWITCH_COOLDOWN_MS } from '../constants';
 import type { WorldDef, WorldId } from '../types';
 import Player from './Player';
+import { glitchCamera, hitstop } from '../fx/Juice';
 
 /**
  * Owns the PAST/FUTURE state and everything tied to flipping between them:
@@ -132,6 +133,7 @@ export default class WorldManager {
     const flash = Phaser.Display.Color.IntegerToColor(to.flashColor);
     cam.flash(160, flash.red, flash.green, flash.blue);
     cam.shake(110, 0.006);
+    glitchCamera(cam, 150);
     this.tweenBackground(from.bgColor, to.bgColor, 280);
   }
 
@@ -140,6 +142,7 @@ export default class WorldManager {
     const c = Phaser.Display.Color.IntegerToColor(DENIED_FLASH_COLOR);
     cam.flash(90, c.red, c.green, c.blue);
     cam.shake(60, 0.004);
+    hitstop(this.scene, 60);
   }
 
   private tweenBackground(fromInt: number, toInt: number, duration: number): void {

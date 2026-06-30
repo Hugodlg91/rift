@@ -47,7 +47,7 @@ export default class GameScene extends Phaser.Scene {
   private levelComplete = false;
   private lookaheadX = 0;
 
-  private player!: Player;
+  public player!: Player;
   private worldManager!: WorldManager;
   private pastGroup!: Phaser.Physics.Arcade.StaticGroup;
   private futureGroup!: Phaser.Physics.Arcade.StaticGroup;
@@ -275,6 +275,11 @@ export default class GameScene extends Phaser.Scene {
   override update(_time: number, delta: number): void {
     if (this.levelComplete) return;
 
+    if (this.player.isAlive) {
+      const runTimer = this.registry.get('runTimer') || 0;
+      this.registry.set('runTimer', runTimer + delta);
+    }
+
     this.player.update(delta);
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKey)) {
@@ -377,6 +382,7 @@ export default class GameScene extends Phaser.Scene {
     this.player.setCheckpoint(cp.x, cp.y); // future deaths respawn here
     getSfx().checkpoint();
     this.cameras.main.flash(120, 255, 255, 255, false);
+    this.game.events.emit('toast', 'CHECKPOINT');
 
     cp.pillar.clearTint();
     this.tweens.add({ targets: cp.pillar, alpha: 1, duration: 200 });
@@ -591,6 +597,7 @@ export default class GameScene extends Phaser.Scene {
     this.shardsCollected += 1;
     this.registry.set('shards', this.shardsCollected);
     getSfx().collectible();
+    this.game.events.emit('toast', '+1 ◆');
     this.tweens.add({
       targets: item,
       scale: 1.9,

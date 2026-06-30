@@ -4,7 +4,7 @@
 > Mis à jour au fur et à mesure que les tâches sont terminées.
 
 **Session démarrée :** 2026-06-08
-**Statut global :** 🟢 MVP + v2 Phases A→F + Phase G (framework 12 niveaux/3 chapitres + DA par chapitre + **Chapitre 1 « LES RUINES »** & **Chapitre 2 « LA FRACTURE »** : 8 niveaux from scratch) — typecheck + build OK
+**Statut global :** 🟢 MVP + v2 Phases A→H + Phase G (framework 12 niveaux/3 chapitres + DA par chapitre) — typecheck + build OK
 
 ---
 
@@ -207,6 +207,23 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 - [x] **`src/scenes/EndScene.ts`** — écran de fin (victoire + compteur de morts)
 - [x] **`src/main.ts`** — point d'entrée + config Phaser (FIT, gravité, scènes)
 - [x] **Vérification** — `tsc --noEmit` ✓ · `npm run build` ✓ · dev server démarre sur :5173 ✓
+
+## 🎨 v2 — Phase H : HUD v2 + Polish final ✅ (terminée)
+
+- [x] **`Juice.ts`** — Création de helpers pour l'aberration chromatique (`glitchCamera`) et la micro-pause (`hitstop`).
+- **Game Feel** :
+  - [x] Pause `hitstop` de 80ms déclenchée au moment de la mort dans `Player.ts`.
+  - [x] Pause `hitstop` de 60ms au moment d'un switch refusé dans `WorldManager.ts`.
+  - [x] Aberration chromatique (secousse horizontale aléatoire pendant 150ms) via `glitchCamera` à chaque switch dans `WorldManager.ts`.
+- **HUD v2** :
+  - [x] **`UIScene.ts`** réécrite complètement de zéro.
+  - [x] Badge "Monde" affiché sous forme d'une pastille en haut à gauche. Au switch, elle effectue un flip 3D (scaleX = 0 puis 1).
+  - [x] Ajout d'une pastille circulaire "DASH" sous l'indicateur de monde, indiquant la disponibilité du dash en permanence (lecture de `dashReady`).
+  - [x] Timer de session "speedrun" de format `MM:SS.cc` implémenté en haut à droite. Il est sauvegardé dans le `registry` sous `runTimer` et mis à jour depuis `GameScene.ts`.
+  - [x] Implémentation du système de notifications *Toasts* (message centré apparaissant puis montant en s'effaçant). Câblage via les events de `this.game`. Emitting sur `CHECKPOINT` et `+1 ◆`.
+- [x] `tsc --noEmit` ✓ · `npm run build` ✓
+
+---
 
 ## 🚧 Reste à faire
 

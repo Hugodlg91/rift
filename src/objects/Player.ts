@@ -1,21 +1,7 @@
 import Phaser from 'phaser';
-import {
-  DASH,
-  FEEL,
-  getPalette,
-  GRAVITY_Y,
-  JUMP_VELOCITY,
-  MAX_AIR_JUMPS,
-  PALETTE,
-  PLAYER_HEIGHT,
-  playerAccentKey,
-  PLAYER_SPEED,
-  PLAYER_WIDTH,
-  RESPAWN_DELAY_MS,
-  TEX,
-  WALL,
-} from '../constants';
+import { WALL, TEX, RESPAWN_DELAY_MS, PLAYER_WIDTH, PLAYER_SPEED, playerAccentKey, PLAYER_HEIGHT, PALETTE, MAX_AIR_JUMPS, JUMP_VELOCITY, GRAVITY_Y, getPalette, FEEL, DASH } from '../constants';
 import type { Ability, WorldId } from '../types';
+import { hitstop } from '../fx/Juice';
 
 /** Move `current` toward `target` by at most `maxDelta`. */
 function approach(current: number, target: number, maxDelta: number): number {
@@ -94,7 +80,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.setOrigin(0.5, 0.5);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
+    // Texture is 24×34 but the physics body is 20×28.
+    // ox=2, oy=4 are the margins baked into the BootScene canvas.
     body.setSize(PLAYER_WIDTH, PLAYER_HEIGHT);
+    body.setOffset(2, 4); // align body with the drawn silhouette
     // Collide with world edges; the GameScene leaves the bottom open (fall = death).
     body.setCollideWorldBounds(true);
     body.setMaxVelocity(DASH.SPEED, 1400); // headroom for the dash burst
@@ -424,10 +413,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     body.setVelocityY(this.lastVelY); // keep the upward momentum through the corner
   }
 
+  /** True if the dash is fully recharged and ready to use. */
+  get dashReady(): boolean {
+    return this.dashAvailable;
+  }
+
   /** Kill the player: freeze physics, play a death flourish, then respawn. */
   die(): void {
     if (!this.isAlive) return;
     this.isAlive = false;
+
+    hitstop(this.scene, 80); // emphasize the impact of dying
 
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(0, 0);

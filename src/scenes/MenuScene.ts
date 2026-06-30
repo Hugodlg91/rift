@@ -244,6 +244,7 @@ export default class MenuScene extends Phaser.Scene {
     this.input.keyboard!.removeAllListeners();
 
     this.registry.set('deaths', 0);
+    this.registry.set('runTimer', 0);
     this.registry.set('world', 'past');
     this.cameras.main.fadeOut(300);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
