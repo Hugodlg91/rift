@@ -29,6 +29,11 @@ lerna-debug.log*
 # Claude Code
 .claude/
 
+# Agent tooling (graphify + local agent config — not part of the project)
+.agents/
+CLAUDE.md
+graphify-out/
+
 # Editor / OS
 .DS_Store
 Thumbs.db
