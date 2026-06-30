@@ -1,7 +1,7 @@
 import type { Ability, LevelData, LevelCell, LevelMeta } from '../types';
-import { stubLevel } from './stub';
 import { CHAPTER1 } from './chapter1';
 import { CHAPTER2 } from './chapter2';
+import { CHAPTER3 } from './chapter3';
 
 /** The three chapters, each with its identity and signature mechanic. */
 export const CHAPTERS: Record<number, { name: string }> = {
@@ -30,10 +30,10 @@ export const LEVELS: readonly LevelMeta[] = [
   { id: 6, name: '2-2', chapter: 2, abilities: CH2, introduces: 'wallJump', data: CHAPTER2[1] },
   { id: 7, name: '2-3', chapter: 2, abilities: CH2, data: CHAPTER2[2] },
   { id: 8, name: '2-4', chapter: 2, abilities: CH2, data: CHAPTER2[3] },
-  { id: 9, name: '3-1', chapter: 3, abilities: CH3, introduces: 'echo', data: stubLevel(12) },
-  { id: 10, name: '3-2', chapter: 3, abilities: CH3, data: stubLevel(17) },
-  { id: 11, name: '3-3', chapter: 3, abilities: CH3, data: stubLevel(14) },
-  { id: 12, name: '3-4', chapter: 3, abilities: CH3, data: stubLevel(20) },
+  { id: 9, name: '3-1', chapter: 3, abilities: CH3, introduces: 'echo', data: CHAPTER3[0] },
+  { id: 10, name: '3-2', chapter: 3, abilities: CH3, data: CHAPTER3[1] },
+  { id: 11, name: '3-3', chapter: 3, abilities: CH3, data: CHAPTER3[2] },
+  { id: 12, name: '3-4', chapter: 3, abilities: CH3, data: CHAPTER3[3] },
 ];
 
 function findToken(grid: LevelCell[][], token: string): { x: number; y: number } | null {

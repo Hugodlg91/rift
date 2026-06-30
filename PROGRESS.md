@@ -179,9 +179,16 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 
 > ⏳ **À valider à la main (important)** : franchissement réel des **4 parcours complets** non testé en headless (rAF gelé) — j'ai vérifié que les *mécaniques* fonctionnent dans la géométrie, pas un run de bout en bout. Hazards/fosses rendus indulgents (pics à 1 tuile pour le dash, fosses calibrées) ; les passages les plus pointus (timing des plateformes mobiles, remontée des puits muraux) demandent ton playtest pour la difficulté/solvabilité.
 
-### Chapitre 3 ⬜ à venir (G-ch3)
+### Contenu réel — Chapitre 3 : TEMPS PROFOND ✅ (terminé, en attente de review)
 
-> Réutilise le builder + `CHAPTER_GRADE` (déjà câblé). ch.3 : +echo, crushers + effondrables (`C`) + boutons/portes (`B`/`D`). Stubs des niveaux 9-12 en place en attendant.
+> Capacités : switch + double saut + dash + saut mural + **echo**. Hazards : plateformes effondrables (`C`), boutons/portes (`B`/`D`). DA ch.3 (désaturée, glow fort).
+
+- [x] **4 niveaux from scratch** (`levels/chapter3.ts`) :
+  - **3-1 ENSEIGNER echo** — intro effondrables + mur infranchissable nécessitant l'Echo.
+  - **3-2 TESTER echo** — gouffre géant + tunnel de pics.
+  - **3-3 TWISTER boutons/portes** — boutons inaccessibles, portes bloquantes.
+  - **3-4 INTÉGRER temple final** — mix maximal Echo + portes de mondes différents + effondrables.
+- [x] `tsc` ✓ · `npm run build` ✓
 
 ---
 
