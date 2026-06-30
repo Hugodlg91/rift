@@ -4,7 +4,7 @@
 > Mis à jour au fur et à mesure que les tâches sont terminées.
 
 **Session démarrée :** 2026-06-08
-**Statut global :** 🟢 MVP + v2 Phases A→F + Phase G (framework 12 niveaux/3 chapitres + **Chapitre 1 « LES RUINES » : 4 niveaux from scratch + DA par chapitre**) — typecheck + build OK
+**Statut global :** 🟢 MVP + v2 Phases A→F + Phase G (framework 12 niveaux/3 chapitres + DA par chapitre + **Chapitre 1 « LES RUINES »** & **Chapitre 2 « LA FRACTURE »** : 8 niveaux from scratch) — typecheck + build OK
 
 ---
 
@@ -165,9 +165,23 @@ Player émet `jump(air:boolean)`. Pas d'évènement inventé pour dash/collectib
 
 > ⏳ **À valider à la main** : franchissement réel des sauts/fosses (le déplacement touche-maintenue n'est pas testable en headless — rAF throttlé), ressenti et difficulté des 4 niveaux, lisibilité du grade ch.1. Calibrage des gaps fait d'après la physique documentée (saut ≈ 5 tuiles, double ≈ 9) avec marge.
 
-### Chapitres 2 & 3 ⬜ à venir (G-ch2 → G-ch3)
+### Contenu réel — Chapitre 2 : LA FRACTURE ✅ (terminé, en attente de review)
 
-> Réutilisent le builder + `CHAPTER_GRADE` (déjà câblé pour les 3 chapitres). ch.2 : +dash +saut mural, piques/lasers + plateformes mobiles. ch.3 : +echo, effondrables + boutons/portes. Les stubs des niveaux 5-12 restent en place en attendant.
+> Capacités : switch + double saut + **dash** + **saut mural**. Hazards : piques/lasers (`^`) + plateformes mobiles (`M`). DA ch.2 (saturée) appliquée automatiquement.
+
+- [x] **4 niveaux from scratch** (`levels/chapter2.ts`, solutions documentées en tête) :
+  - **2-1 ENSEIGNER dash** (48×14) — plafonds bas : impossible de sauter, on **dash** (i-frames) à travers un pic ; fosse double saut ; mur de phase.
+  - **2-2 ENSEIGNER saut mural** (50×14) — **puits verticaux** trop hauts pour le double saut : on remonte en saut mural de paroi en paroi jusqu'à la corniche.
+  - **2-3 TWISTER** (60×14) — dash + saut mural mêlés au switch + **plateforme mobile** (FUTUR) qui franchit une fosse + puits mural de phase.
+  - **2-4 INTÉGRER** (72×14) — long parcours : pics, mobile, puits mural, grand vide, **2 checkpoints**, énigmes de monde.
+- [x] `tsc` ✓ · `npm run build` ✓
+- [x] **Vérifié en navigateur** (pas-à-pas) : structure valide (largeurs garanties + `validateAllLevels`), capacités/tutoriels corrects ; **dash qui traverse le pic** (passe vivant) ; **wall-slide** (vy plafonnée 95) + **wall-jump** (poussée vx=250 à l'opposé) opérationnels dans la géométrie réelle.
+
+> ⏳ **À valider à la main (important)** : franchissement réel des **4 parcours complets** non testé en headless (rAF gelé) — j'ai vérifié que les *mécaniques* fonctionnent dans la géométrie, pas un run de bout en bout. Hazards/fosses rendus indulgents (pics à 1 tuile pour le dash, fosses calibrées) ; les passages les plus pointus (timing des plateformes mobiles, remontée des puits muraux) demandent ton playtest pour la difficulté/solvabilité.
+
+### Chapitre 3 ⬜ à venir (G-ch3)
+
+> Réutilise le builder + `CHAPTER_GRADE` (déjà câblé). ch.3 : +echo, crushers + effondrables (`C`) + boutons/portes (`B`/`D`). Stubs des niveaux 9-12 en place en attendant.
 
 ---
 
