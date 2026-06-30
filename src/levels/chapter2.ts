@@ -2,17 +2,8 @@ import { GridBuilder, build } from './builder';
 import type { LevelData } from '../types';
 
 /**
- * CHAPITRE 2 — LA FRACTURE.  Capacités : switch + double saut + DASH + SAUT MURAL.
- * Hazards : pics (PASSÉ) / lasers (FUTUR) — token '^' — et plateformes mobiles 'M'.
- *
- * RÈGLE DE CONCEPTION (sinon on bloque le joueur) : un mur PLEINE HAUTEUR ne va
- * QUE dans un seul monde — c'est un MUR DE PHASE qu'on franchit en switchant —
- * jamais dans la base partagée (ce serait un cul-de-sac dans les deux mondes).
- * Le saut mural se travaille sur des CHEMINÉES à shard : deux parois suspendues,
- * ouvertes au sol (on passe dessous), qu'on remonte en rebond pour le bonus.
- *
- * Calibrage : saut ≈ 4–5 tuiles ; double saut ≈ 7–8 haut / 8–9 portée ;
- * dash ≈ 2,5–3 tuiles à plat (i-frames pendant le dash) ; sol = lignes 12-13.
+ * CHAPITRE 2 — LA FRACTURE. Capacités : switch + double saut + DASH + SAUT MURAL.
+ * Niveaux repensés pour offrir plus de verticalité et de variété visuelle.
  */
 
 const H = 14;
@@ -26,143 +17,179 @@ function pit(g: GridBuilder, x: number, len: number): void {
   }
 }
 
-/** Pics/lasers au sol (ligne STAND). */
-function spikes(g: GridBuilder, x: number, len: number): void {
-  for (let i = 0; i < len; i++) g.set(x + i, STAND, '^');
-}
-
-/** Cheminée à saut mural : deux parois suspendues (lignes 1..top, écart de 2),
- *  ouvertes en bas → on passe dessous au sol, on remonte en rebond pour un shard. */
-function chimney(g: GridBuilder, x: number, top = 7): void {
-  g.vLine(x, 1, top, '#');
-  g.vLine(x + 3, 1, top, '#');
+/** Pics/lasers au sol. */
+function spikes(g: GridBuilder, x: number, len: number, y: number = STAND): void {
+  for (let i = 0; i < len; i++) g.set(x + i, y, '^');
 }
 
 // ---------------------------------------------------------------------------
-// 2-1 — ENSEIGNER le dash
+// 2-1 — ENSEIGNER le dash (variante colline)
 // ---------------------------------------------------------------------------
-// Solution : plafond bas (ligne 10) sur x9-16 → impossible de sauter ; DASH à
-// travers le pic (x12) grâce aux i-frames. Checkpoint (x20). Fosse (x27-29) au
-// double saut. Mur de phase PASSÉ (x39) → switch FUTUR → sortie.
+// Solution : on monte la colline, plafond très bas au sommet → impossible de
+// sauter au-dessus du pic, il faut dasher. On redescend, checkpoint, fosse
+// (double saut) puis mur de phase PASSÉ.
 function level2_1(): LevelData {
   const W = 48;
   const base = new GridBuilder(W, H).frame();
   base.set(2, STAND, 'S');
-  base.set(W - 3, STAND, 'E'); // x45
+  base.set(W - 3, STAND, 'E');
 
-  base.hLine(9, 10, 8, '#'); // plafond bas : on ne peut pas sauter par-dessus le pic
-  spikes(base, 12, 1); // un seul pic → dash (i-frames), large pour apprendre
-  base.set(20, STAND, 'P'); // checkpoint
-  pit(base, 27, 3); // fosse — double saut
+  // Colline
+  base.rect(8, 9, 3, 5, '#');
+  base.rect(11, 7, 3, 7, '#');
+  base.rect(14, 5, 8, 9, '#'); // sommet de la colline à y=5
+
+  // Plafond bas pour forcer le dash
+  base.hLine(16, 3, 5, '#'); // plafond à y=3
+  spikes(base, 18, 1, 4); // pic à y=4 (1 tuile de passage)
+
+  // Descente
+  base.rect(22, 7, 3, 7, '#');
+  base.rect(25, 9, 3, 5, '#');
+
+  base.set(29, STAND, 'P'); // checkpoint
+  pit(base, 34, 4); // fosse
 
   const past = base.clone();
-  past.vLine(39, 1, 11, '#'); // mur de phase PASSÉ
-  past.set(20, 7, 'o'); // shard au-dessus du checkpoint
+  past.vLine(42, 1, 11, '#'); // mur de phase PASSÉ
+  past.set(29, 7, 'o'); // shard au dessus du checkpoint
 
-  const future = base.clone(); // FUTUR : le mur est ouvert
-  future.set(35, 8, 'o'); // shard de récompense après la fosse
+  const future = base.clone();
+  future.set(40, 8, 'o');
 
   return build(past, future);
 }
 
 // ---------------------------------------------------------------------------
-// 2-2 — ENSEIGNER le saut mural
+// 2-2 — ENSEIGNER le saut mural (variante gouffre)
 // ---------------------------------------------------------------------------
-// Solution : fosse (x11-14) double saut → CHEMINÉE (x18/x21) : on passe dessous,
-// puis on remonte en SAUT MURAL pour le shard au sommet (x19, ligne 1). Pic sous
-// plafond bas (x27) → dash. Fosse (x31-34) double saut. Mur de phase PASSÉ (x38)
-// → switch FUTUR → sortie.
+// Solution : on démarre en hauteur, on tombe dans un trou. Pour remonter, on
+// utilise un saut mural entre la paroi suspendue (x=14) et la corniche (x=17).
+// Dash sous plafond bas (x=19/21). Checkpoint, grande fosse double saut,
+// mur de phase PASSÉ à la fin.
 function level2_2(): LevelData {
-  const W = 48;
+  const W = 52;
   const base = new GridBuilder(W, H).frame();
-  base.set(2, STAND, 'S');
-  base.set(W - 3, STAND, 'E'); // x45
+  
+  // Promontoire de départ
+  base.rect(0, 6, 8, 8, '#');
+  base.set(2, 5, 'S');
+  base.set(W - 3, STAND, 'E');
 
-  pit(base, 11, 4); // double saut
-  chimney(base, 18); // parois x18 & x21 (lignes 1-7) — saut mural pour le shard
-  base.hLine(25, 10, 5, '#'); // plafond bas
-  spikes(base, 27, 1); // pic sous plafond → dash
-  pit(base, 31, 4); // double saut
+  // Le gouffre se situe naturellement après x=7 (jusqu'au fond STAND=11)
+  
+  // Paroi suspendue gauche du saut mural
+  base.vLine(14, 4, 7, '#');
+  
+  // Paroi droite du saut mural (corniche)
+  base.rect(17, 4, 8, 10, '#'); 
+  
+  // Sur la corniche, plafond bas et pic
+  base.hLine(19, 2, 4, '#'); // plafond y=2
+  spikes(base, 21, 1, 3); // pic y=3
+  
+  // On retombe au sol
+  base.set(29, STAND, 'P');
+  pit(base, 34, 5); // fosse
 
   const past = base.clone();
-  past.vLine(38, 1, 11, '#'); // mur de phase PASSÉ → switch FUTUR pour finir
-  past.set(19, 1, 'o'); // shard tout en haut de la cheminée
-  past.set(8, 9, 'o'); // shard au sol (départ)
-
+  past.vLine(46, 1, 11, '#'); // mur de phase PASSÉ
+  past.set(15, 2, 'o'); // shard en l'air dans la zone de saut mural
+  
   const future = base.clone();
-  future.set(43, 8, 'o'); // shard FUTUR
+  future.set(40, 8, 'o');
 
   return build(past, future);
 }
 
 // ---------------------------------------------------------------------------
-// 2-3 — TWISTER  (dash + switch + plateforme mobile + cheminée)
+// 2-3 — TWISTER (dash + switch + mobile + cheminée suspendue)
 // ---------------------------------------------------------------------------
-// Solution : pic sous plafond (x8) → dash. Fosse (x13-17) franchie par la
-// plateforme MOBILE (FUTUR) — switch FUTUR, on monte dessus. Checkpoint (x21).
-// Cheminée à shard (x27). 2e pic (x37) → dash. Fosse (x42-45) double saut. Mur
-// de phase PASSÉ (x48) → switch → sortie.
+// Solution : petite plateforme avec plafond bas → dash. Fosse avec double saut.
+// Grande structure centrale (x=26..36) avec une "cheminée" de saut mural. 
+// Fosse traversée via plateforme mobile (FUTUR). Mur de phase.
 function level2_3(): LevelData {
-  const W = 58;
+  const W = 62;
   const base = new GridBuilder(W, H).frame();
   base.set(2, STAND, 'S');
-  base.set(W - 3, STAND, 'E'); // x55
-
-  base.hLine(6, 10, 5, '#'); // plafond bas
-  spikes(base, 8, 1); // → dash
-  pit(base, 13, 5); // fosse — mobile FUTUR
-  base.set(21, STAND, 'P'); // checkpoint
-  chimney(base, 27); // shard saut mural
-  base.hLine(35, 10, 5, '#'); // plafond bas
-  spikes(base, 37, 1); // → dash
-  pit(base, 42, 4); // double saut
+  base.set(W - 3, STAND, 'E');
+  
+  // Petit promontoire à dash
+  base.rect(6, 8, 4, 6, '#'); // y=8
+  base.hLine(6, 6, 4, '#'); // plafond y=6
+  spikes(base, 7, 1, 7); // pic y=7
+  
+  pit(base, 12, 6); // fosse 1
+  base.set(20, STAND, 'P');
+  
+  // Structure centrale : saut mural suspendu
+  base.rect(26, 6, 4, 8, '#');
+  base.rect(33, 6, 4, 8, '#');
+  // Plafond au-dessus de la cheminée pour éviter qu'on passe par-dessus
+  base.hLine(27, 2, 2, '#');
+  
+  pit(base, 42, 6); // fosse 2 (franchie en mobile)
 
   const past = base.clone();
-  past.vLine(48, 1, 11, '#'); // mur de phase PASSÉ → switch
-  past.set(28, 1, 'o'); // shard cheminée
-
+  past.vLine(54, 1, 11, '#'); // mur de phase PASSÉ
+  past.set(31, 3, 'o'); // shard dans la cheminée
+  
   const future = base.clone();
-  future.set(15, STAND - 1, 'M'); // plateforme mobile sur la fosse (FUTUR)
-  future.set(50, 8, 'o'); // shard
+  future.set(14, STAND - 1, 'M'); // plateforme mobile fosse 1
+  future.set(44, STAND - 1, 'M'); // plateforme mobile fosse 2
+  future.set(50, 8, 'o');
 
   return build(past, future);
 }
 
 // ---------------------------------------------------------------------------
-// 2-4 — INTÉGRER
+// 2-4 — INTÉGRER (complexe abandonné)
 // ---------------------------------------------------------------------------
-// Solution : fosse (x8-10) double saut. Pic sous plafond (x15) → dash. Fosse
-// (x19-23) mobile FUTUR. Checkpoint (x28). Cheminée à shard (x34). GRAND vide
-// (x42-47) double saut. Checkpoint (x50). Pic sous plafond (x56) → dash. Énigme
-// finale : fosse (x60-63) + mur de phase FUTUR (x65) → switch PASSÉ (pierre de
-// gué x61) → sortie.
+// Solution : Parcours accidenté. Start en hauteur. Fosse. Mur escalade.
+// Dash sous plafond. Double saut au-dessus de fosse.
+// Zone complexe avec plateforme mobile + saut mural sur une tour.
+// Mur de phase et pierre de gué.
 function level2_4(): LevelData {
-  const W = 70;
+  const W = 76;
   const base = new GridBuilder(W, H).frame();
-  base.set(2, STAND, 'S');
-  base.set(W - 3, STAND, 'E'); // x67
-
-  pit(base, 8, 3); // double saut
-  base.hLine(13, 10, 5, '#'); // plafond bas
-  spikes(base, 15, 1); // → dash
-  pit(base, 19, 5); // mobile FUTUR
-  base.set(28, STAND, 'P'); // checkpoint 1
-  chimney(base, 34); // shard saut mural
-  pit(base, 42, 6); // grand vide — double saut
-  base.set(50, STAND, 'P'); // checkpoint 2
-  base.hLine(54, 10, 5, '#'); // plafond bas
-  spikes(base, 56, 1); // → dash
-  pit(base, 60, 4); // fosse de l'énigme finale
-
+  
+  // Départ très surélevé
+  base.rect(0, 8, 10, 6, '#'); // y=8
+  base.set(2, 7, 'S');
+  base.set(W - 3, STAND, 'E');
+  
+  pit(base, 10, 4); // fosse sous le départ
+  
+  // Corniche haute avec dash
+  base.rect(14, 5, 6, 9, '#'); // y=5
+  base.hLine(15, 3, 4, '#'); // plafond y=3
+  spikes(base, 16, 1, 4); // pic y=4
+  
+  // On atterrit en bas
+  base.set(22, STAND, 'P'); // check 1
+  pit(base, 26, 6); // fosse à franchir en mobile
+  
+  // Tour
+  base.rect(36, 6, 6, 8, '#');
+  base.vLine(35, 2, 6, '#'); // paroi de saut mural à gauche de la tour
+  
+  base.set(44, STAND, 'P'); // check 2
+  pit(base, 48, 8); // grand vide double saut
+  
+  // Dernière corniche avec dash
+  base.hLine(62, 9, 5, '#'); // plafond bas y=9
+  spikes(base, 64, 1, 10); // pic y=10
+  
   const past = base.clone();
-  past.set(61, 10, '#'); // pierre de gué de l'énigme finale (PASSÉ)
-  past.set(35, 1, 'o'); // shard cheminée
-
+  past.vLine(70, 1, 11, '#'); // mur de phase PASSÉ (fin)
+  past.set(28, STAND - 1, 'M'); // mobile dans le PASSÉ
+  past.set(38, 4, 'o');
+  
   const future = base.clone();
-  future.set(21, STAND - 1, 'M'); // mobile sur la fosse seg.2 (FUTUR)
-  future.vLine(65, 1, 11, '#'); // mur de phase FUTUR (force le PASSÉ en fin)
-  future.set(45, 8, 'o'); // shard au-dessus du grand vide
-
+  future.set(52, 8, 'o'); // shard grand vide
+  // Mur de phase au milieu du saut mural de la tour (force le switch)
+  future.vLine(35, 2, 6, '.'); // la paroi disparait dans le futur !
+  
   return build(past, future);
 }
 
