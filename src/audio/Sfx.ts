@@ -150,6 +150,17 @@ export default class Sfx {
     );
   }
 
+  // --- UI SFX --------------------------------------------------------------
+
+  menuHover(): void {
+    this.blip({ type: 'triangle', freq: 440, duration: 0.05, gain: 0.1 });
+  }
+
+  menuSelect(): void {
+    this.blip({ type: 'square', freq: 880, duration: 0.1, gain: 0.1 });
+    this.blip({ type: 'square', freq: 1100, duration: 0.1, gain: 0.1, delay: 0.05 });
+  }
+
   // --- synthesis helpers ---------------------------------------------------
 
   private blip(o: BlipOpts): void {
